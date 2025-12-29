@@ -19,9 +19,15 @@ export const metadata: Metadata = {
 }
 
 export default async function ProjectsPage() {
-    // Fetch projects from DB
     const projects = await prisma.project.findMany({
-        include: { client: true, area: true },
+        include: {
+            client: true,
+            family: {
+                include: {
+                    area: true
+                }
+            }
+        },
         orderBy: { updatedAt: 'desc' }
     })
 
@@ -42,15 +48,16 @@ export default async function ProjectsPage() {
                         <TableRow>
                             <TableHead>Nome</TableHead>
                             <TableHead>Cliente</TableHead>
+                            <TableHead>Família</TableHead>
                             <TableHead>Área</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>Progresso</TableHead>
                             <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {projects.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                                     Nenhum projeto encontrado.
                                 </TableCell>
                             </TableRow>
@@ -58,10 +65,15 @@ export default async function ProjectsPage() {
                             projects.map((project) => (
                                 <TableRow key={project.id}>
                                     <TableCell className="font-medium">{project.name}</TableCell>
-                                    <TableCell>{project.client?.name || '-'}</TableCell>
-                                    <TableCell>{project.area?.name || '-'}</TableCell>
+                                    <TableCell>{project.client?.razaoSocial || '-'}</TableCell>
                                     <TableCell>
-                                        <Badge variant="secondary">{project.status}</Badge>
+                                        <Badge variant="outline">{project.familyCode}</Badge>
+                                    </TableCell>
+                                    <TableCell>{project.family?.area?.name || '-'}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={project.progress === 100 ? "default" : "secondary"}>
+                                            {project.progress}%
+                                        </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="sm" asChild>
