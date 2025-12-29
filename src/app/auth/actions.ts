@@ -10,7 +10,12 @@ const authSchema = z.object({
     password: z.string().min(6),
 });
 
-export async function login(formData: FormData) {
+export type AuthState = {
+    error?: string;
+    message?: string;
+}
+
+export async function login(prevState: AuthState, formData: FormData): Promise<AuthState> {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
@@ -35,7 +40,7 @@ export async function login(formData: FormData) {
     redirect("/dashboard");
 }
 
-export async function signup(formData: FormData) {
+export async function signup(prevState: AuthState, formData: FormData): Promise<AuthState> {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
     const name = formData.get("name") as string;
@@ -54,7 +59,7 @@ export async function signup(formData: FormData) {
         options: {
             data: {
                 name,
-                role: "EMPLOYEE", // Default role
+                role: "EMPLOYEE",
             },
         },
     });

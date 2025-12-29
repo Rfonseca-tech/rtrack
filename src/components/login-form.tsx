@@ -1,5 +1,6 @@
 "use client"
 
+import { useActionState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -11,13 +12,18 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { login } from "@/app/auth/actions"
+import { login, AuthState } from "@/app/auth/actions"
 import Link from "next/link"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+
+const initialState: AuthState = {}
 
 export function LoginForm({
     className,
     ...props
 }: React.ComponentPropsWithoutRef<"div">) {
+    const [state, formAction, isPending] = useActionState(login, initialState)
+
     return (
         <div className={cn("flex flex-col gap-6", className)} {...props}>
             <Card>
@@ -28,8 +34,13 @@ export function LoginForm({
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form action={login}>
+                    <form action={formAction}>
                         <div className="flex flex-col gap-6">
+                            {state.error && (
+                                <Alert variant="destructive">
+                                    <AlertDescription>{state.error}</AlertDescription>
+                                </Alert>
+                            )}
                             <div className="grid gap-2">
                                 <Label htmlFor="email">Email</Label>
                                 <Input
@@ -52,8 +63,8 @@ export function LoginForm({
                                 </div>
                                 <Input id="password" name="password" type="password" required />
                             </div>
-                            <Button type="submit" className="w-full">
-                                Entrar
+                            <Button type="submit" className="w-full" disabled={isPending}>
+                                {isPending ? "Entrando..." : "Entrar"}
                             </Button>
                         </div>
                         <div className="mt-4 text-center text-sm">
