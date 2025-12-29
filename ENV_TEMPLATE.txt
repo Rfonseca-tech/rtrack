@@ -1,0 +1,24 @@
+# ===========================================
+# SUPABASE CONFIGURATION
+# ===========================================
+# Get these from your Supabase project settings:
+# https://app.supabase.com/project/_/settings/api
+
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+
+# ===========================================
+# PRISMA DATABASE CONNECTION
+# ===========================================
+# Get this from Supabase > Settings > Database > Connection String
+# Use the "Transaction Pooler" URL for DATABASE_URL
+# Use the "Session Pooler" or "Direct" URL for DIRECT_URL
+
+DATABASE_URL="postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres"
+
+# ===========================================
+# APPLICATION SETTINGS
+# ===========================================
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NODE_ENV=development

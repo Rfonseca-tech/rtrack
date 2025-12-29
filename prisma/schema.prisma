@@ -1,0 +1,269 @@
+// Enums
+enum UserRole {
+  ROOT
+  ADMIN
+  EMPLOYEE
+  CLIENT
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  WAITING_VALIDATION
+  COMPLETED
+}
+
+// Data source configuration
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// USER MANAGEMENT & RBAC
+// ==========================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      UserRole @default(EMPLOYEE)
+  areaId    String?
+  area      Area?    @relation(fields: [areaId], references: [id])
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Self-referential relation for invitations
+  invitedBy   User?   @relation("UserInvites", fields: [invitedById], references: [id])
+  invitedById String?
+  invitees    User[]  @relation("UserInvites")
+
+  // Project collaborations
+  projectCollaborations ProjectCollaborator[]
+  auditLogs             AuditLog[]
+
+  @@map("users")
+}
+
+model Area {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  externalUrl String?   @map("external_url")
+  users       User[]
+  families    ProductFamily[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("areas")
+}
+
+// ==========================================
+// PRODUCT CATALOG
+// ==========================================
+
+model ProductFamily {
+  id          String    @id @default(cuid())
+  code        String    @unique // e.g., "SOC.01"
+  name        String
+  description String?
+  products    Product[]
+  
+  areaId      String?
+  area        Area?     @relation(fields: [areaId], references: [id])
+  projects    Project[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("product_families")
+  @@index([areaId])
+}
+
+model Product {
+  id            String         @id @default(cuid())
+  code          String         @unique // e.g., "SOC.01.1"
+  name          String
+  description   String?
+  familyId      String
+  family        ProductFamily  @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  templateTasks TaskTemplate[]
+  contracts     Contract[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([familyId])
+  @@map("products")
+}
+
+model TaskTemplate {
+  id          String         @id @default(cuid())
+  productId   String
+  product     Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  parentId    String?
+  parent      TaskTemplate?  @relation("TaskTemplateHierarchy", fields: [parentId], references: [id])
+  children    TaskTemplate[] @relation("TaskTemplateHierarchy")
+  title       String
+  description String?
+  order       Int
+  isForClient Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([productId])
+  @@index([parentId])
+  @@map("task_templates")
+}
+
+// ==========================================
+// CLIENTS
+// ==========================================
+
+model Client {
+  id          String    @id @default(cuid())
+  razaoSocial String
+  cnpj        String    @unique
+  emailDomain String
+  isActive    Boolean   @default(true)
+  projects    Project[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("clients")
+}
+
+// ==========================================
+// PROJECTS & CONTRACTS
+// ==========================================
+
+model Project {
+  id            String                @id @default(cuid())
+  name          String
+  familyCode    String
+  family        ProductFamily @relation(fields: [familyCode], references: [code])
+  clientId      String
+  client        Client                @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  contracts     Contract[]
+  tasks         Task[]
+  collaborators ProjectCollaborator[]
+  progress      Float                 @default(0)
+  isActive      Boolean               @default(true)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@unique([clientId, familyCode])
+  @@index([clientId])
+  @@map("projects")
+}
+
+model Contract {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  startDate DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, productId])
+  @@index([projectId])
+  @@index([productId])
+  @@map("contracts")
+}
+
+// ==========================================
+// TASKS & ROADMAP
+// ==========================================
+
+model Task {
+  id          String     @id @default(cuid())
+  projectId   String
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parentId    String?
+  parent      Task?      @relation("TaskTree", fields: [parentId], references: [id])
+  children    Task[]     @relation("TaskTree")
+  productCode String? // Reference to the product this task belongs to
+  title       String
+  description String?
+  status      TaskStatus @default(PENDING)
+  dueDate     DateTime?
+  order       Int
+  isForClient Boolean    @default(false)
+
+  documents   Document[]
+  auditLogs   AuditLog[]
+  
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([projectId])
+  @@index([parentId])
+  @@index([status])
+  @@map("tasks")
+}
+
+// ==========================================
+// DOCUMENTS & VALIDATION
+// ==========================================
+
+model Document {
+  id          String    @id @default(cuid())
+  taskId      String
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fileName    String
+  fileUrl     String
+  fileSize    Int?
+  mimeType    String?
+  validated   Boolean   @default(false)
+  validatedAt DateTime?
+  validatedBy String?
+  uploadedAt  DateTime  @default(now())
+
+  @@index([taskId])
+  @@map("documents")
+}
+
+// ==========================================
+// COLLABORATION
+// ==========================================
+
+model ProjectCollaborator {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invitedAt DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_collaborators")
+}
+
+// ==========================================
+// AUDIT LOGS
+// ==========================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  action    String
+  details   String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([taskId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
