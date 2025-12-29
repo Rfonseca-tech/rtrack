@@ -32,10 +32,7 @@ export default async function ProjectTasksPage({ params }: TasksPageProps) {
         where: { id },
         include: {
             tasks: {
-                orderBy: { createdAt: 'asc' },
-                include: {
-                    assignee: true
-                }
+                orderBy: { createdAt: 'asc' }
             }
         }
     })
@@ -98,11 +95,6 @@ export default async function ProjectTasksPage({ params }: TasksPageProps) {
                                         {task.description && (
                                             <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                                                 {task.description}
-                                            </p>
-                                        )}
-                                        {task.assignee && (
-                                            <p className="text-xs text-muted-foreground mt-2">
-                                                👤 {task.assignee.name}
                                             </p>
                                         )}
                                     </div>
