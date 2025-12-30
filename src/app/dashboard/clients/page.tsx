@@ -16,8 +16,19 @@ export const metadata: Metadata = {
     title: 'Clientes',
 }
 
+type ClientWithCount = {
+    id: string
+    razaoSocial: string
+    cnpj: string
+    emailDomain: string
+    isActive: boolean
+    _count: {
+        projects: number
+    }
+}
+
 export default async function ClientsPage() {
-    let clients: Awaited<ReturnType<typeof prisma.client.findMany>> = []
+    let clients: ClientWithCount[] = []
     let error: string | null = null
 
     try {
@@ -28,7 +39,7 @@ export default async function ClientsPage() {
                 }
             },
             orderBy: { createdAt: 'desc' }
-        })
+        }) as ClientWithCount[]
     } catch (e) {
         console.error('Error fetching clients:', e)
         error = 'Erro ao carregar clientes. Verifique a conexão com o banco de dados.'
