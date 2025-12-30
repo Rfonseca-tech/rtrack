@@ -1,5 +1,5 @@
 import { Metadata } from 'next'
-import { Plus } from 'lucide-react'
+import { Plus, Briefcase } from 'lucide-react'
 import Link from 'next/link'
 
 import { Button } from '@/components/ui/button'
@@ -18,8 +18,23 @@ export const metadata: Metadata = {
     title: 'Projetos',
 }
 
+type ProjectWithRelations = {
+    id: string
+    name: string
+    familyCode: string
+    progress: number
+    client: {
+        razaoSocial: string
+    } | null
+    family: {
+        area: {
+            name: string
+        } | null
+    } | null
+}
+
 export default async function ProjectsPage() {
-    let projects: Awaited<ReturnType<typeof prisma.project.findMany>> = []
+    let projects: ProjectWithRelations[] = []
     let error: string | null = null
 
     try {
@@ -33,7 +48,7 @@ export default async function ProjectsPage() {
                 }
             },
             orderBy: { updatedAt: 'desc' }
-        })
+        }) as ProjectWithRelations[]
     } catch (e) {
         console.error('Error fetching projects:', e)
         error = 'Erro ao carregar projetos. Verifique a conexão com o banco de dados.'
@@ -71,7 +86,10 @@ export default async function ProjectsPage() {
                             {projects.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                                        Nenhum projeto encontrado.
+                                        <div className="flex flex-col items-center gap-2">
+                                            <Briefcase className="h-8 w-8" />
+                                            <span>Nenhum projeto encontrado.</span>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ) : (
