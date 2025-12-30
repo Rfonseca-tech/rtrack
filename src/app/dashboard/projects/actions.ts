@@ -13,21 +13,11 @@ const projectSchema = z.object({
     familyCode: z.string().min(1, "Família de Produto é obrigatória"),
 })
 
-export type ProjectActionState = {
-    errors?: {
-        name?: string[]
-        clientId?: string[]
-        familyCode?: string[]
-        _form?: string[]
-    }
-    message?: string | null
-}
-
-export async function createProject(prevState: ProjectActionState, formData: FormData): Promise<ProjectActionState> {
+export async function createProject(formData: FormData): Promise<void> {
     const user = await getCurrentUserWithRole()
 
     if (!user || !canManageData(user.role)) {
-        return { message: "Não autorizado. Apenas ROOT e ADMIN podem criar projetos." }
+        throw new Error("Não autorizado. Apenas ROOT e ADMIN podem criar projetos.")
     }
 
     const validatedFields = projectSchema.safeParse({
@@ -37,10 +27,7 @@ export async function createProject(prevState: ProjectActionState, formData: For
     })
 
     if (!validatedFields.success) {
-        return {
-            errors: validatedFields.error.flatten().fieldErrors,
-            message: "Erro na validação dos campos",
-        }
+        throw new Error("Erro na validação dos campos")
     }
 
     const { name, clientId, familyCode } = validatedFields.data
@@ -57,20 +44,20 @@ export async function createProject(prevState: ProjectActionState, formData: For
         console.error("Database Error:", error)
         // @ts-ignore
         if (error.code === 'P2002') {
-            return { message: "Já existe um projeto para este cliente com esta Família de Produtos." }
+            throw new Error("Já existe um projeto para este cliente com esta Família de Produtos.")
         }
-        return { message: "Falha ao criar projeto. Tente novamente." }
+        throw new Error("Falha ao criar projeto. Tente novamente.")
     }
 
     revalidatePath('/dashboard/projects')
     redirect('/dashboard/projects')
 }
 
-export async function updateProject(id: string, prevState: ProjectActionState, formData: FormData): Promise<ProjectActionState> {
+export async function updateProject(id: string, formData: FormData): Promise<void> {
     const user = await getCurrentUserWithRole()
 
     if (!user || !canManageData(user.role)) {
-        return { message: "Não autorizado. Apenas ROOT e ADMIN podem editar projetos." }
+        throw new Error("Não autorizado. Apenas ROOT e ADMIN podem editar projetos.")
     }
 
     const validatedFields = projectSchema.safeParse({
@@ -80,10 +67,7 @@ export async function updateProject(id: string, prevState: ProjectActionState, f
     })
 
     if (!validatedFields.success) {
-        return {
-            errors: validatedFields.error.flatten().fieldErrors,
-            message: "Erro na validação dos campos",
-        }
+        throw new Error("Erro na validação dos campos")
     }
 
     const { name, clientId, familyCode } = validatedFields.data
@@ -101,9 +85,9 @@ export async function updateProject(id: string, prevState: ProjectActionState, f
         console.error("Database Error:", error)
         // @ts-ignore  
         if (error.code === 'P2002') {
-            return { message: "Já existe um projeto para este cliente com esta Família de Produtos." }
+            throw new Error("Já existe um projeto para este cliente com esta Família de Produtos.")
         }
-        return { message: "Falha ao atualizar projeto. Tente novamente." }
+        throw new Error("Falha ao atualizar projeto. Tente novamente.")
     }
 
     revalidatePath('/dashboard/projects')

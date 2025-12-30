@@ -33,53 +33,47 @@ export default async function NewClientPage() {
             </div>
 
             <div className="rounded-md border bg-card p-6 max-w-2xl">
-                <ClientForm action={createClient} />
+                <form action={createClient} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="razaoSocial">Razão Social</Label>
+                        <Input
+                            id="razaoSocial"
+                            name="razaoSocial"
+                            placeholder="Nome da empresa"
+                            required
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="cnpj">CNPJ</Label>
+                        <Input
+                            id="cnpj"
+                            name="cnpj"
+                            placeholder="00.000.000/0000-00"
+                            required
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="emailDomain">Domínio de Email</Label>
+                        <Input
+                            id="emailDomain"
+                            name="emailDomain"
+                            placeholder="empresa.com.br"
+                            required
+                        />
+                    </div>
+
+                    <input type="hidden" name="isActive" value="true" />
+
+                    <div className="flex gap-4 pt-4">
+                        <Button type="submit">Criar Cliente</Button>
+                        <Button type="button" variant="outline" asChild>
+                            <Link href="/dashboard/clients">Cancelar</Link>
+                        </Button>
+                    </div>
+                </form>
             </div>
         </div>
-    )
-}
-
-function ClientForm({ action }: { action: typeof createClient }) {
-    return (
-        <form action={action} className="space-y-4">
-            <div className="space-y-2">
-                <Label htmlFor="razaoSocial">Razão Social</Label>
-                <Input
-                    id="razaoSocial"
-                    name="razaoSocial"
-                    placeholder="Nome da empresa"
-                    required
-                />
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="cnpj">CNPJ</Label>
-                <Input
-                    id="cnpj"
-                    name="cnpj"
-                    placeholder="00.000.000/0000-00"
-                    required
-                />
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="emailDomain">Domínio de Email</Label>
-                <Input
-                    id="emailDomain"
-                    name="emailDomain"
-                    placeholder="empresa.com.br"
-                    required
-                />
-            </div>
-
-            <input type="hidden" name="isActive" value="true" />
-
-            <div className="flex gap-4 pt-4">
-                <Button type="submit">Criar Cliente</Button>
-                <Button type="button" variant="outline" asChild>
-                    <Link href="/dashboard/clients">Cancelar</Link>
-                </Button>
-            </div>
-        </form>
     )
 }

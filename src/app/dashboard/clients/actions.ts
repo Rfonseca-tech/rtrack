@@ -14,22 +14,11 @@ const clientSchema = z.object({
     isActive: z.boolean().optional().default(true),
 })
 
-export type ClientActionState = {
-    errors?: {
-        razaoSocial?: string[]
-        cnpj?: string[]
-        emailDomain?: string[]
-        _form?: string[]
-    }
-    message?: string | null
-    success?: boolean
-}
-
-export async function createClient(prevState: ClientActionState, formData: FormData): Promise<ClientActionState> {
+export async function createClient(formData: FormData): Promise<void> {
     const user = await getCurrentUserWithRole()
 
     if (!user || !canManageData(user.role)) {
-        return { message: "Não autorizado. Apenas ROOT e ADMIN podem criar clientes." }
+        throw new Error("Não autorizado. Apenas ROOT e ADMIN podem criar clientes.")
     }
 
     const validatedFields = clientSchema.safeParse({
@@ -40,10 +29,7 @@ export async function createClient(prevState: ClientActionState, formData: FormD
     })
 
     if (!validatedFields.success) {
-        return {
-            errors: validatedFields.error.flatten().fieldErrors,
-            message: "Erro na validação dos campos",
-        }
+        throw new Error("Erro na validação dos campos")
     }
 
     const { razaoSocial, cnpj, emailDomain, isActive } = validatedFields.data
@@ -61,20 +47,20 @@ export async function createClient(prevState: ClientActionState, formData: FormD
         console.error("Database Error:", error)
         // @ts-ignore
         if (error.code === 'P2002') {
-            return { message: "Já existe um cliente com este CNPJ." }
+            throw new Error("Já existe um cliente com este CNPJ.")
         }
-        return { message: "Falha ao criar cliente. Tente novamente." }
+        throw new Error("Falha ao criar cliente. Tente novamente.")
     }
 
     revalidatePath('/dashboard/clients')
     redirect('/dashboard/clients')
 }
 
-export async function updateClient(id: string, prevState: ClientActionState, formData: FormData): Promise<ClientActionState> {
+export async function updateClient(id: string, formData: FormData): Promise<void> {
     const user = await getCurrentUserWithRole()
 
     if (!user || !canManageData(user.role)) {
-        return { message: "Não autorizado. Apenas ROOT e ADMIN podem editar clientes." }
+        throw new Error("Não autorizado. Apenas ROOT e ADMIN podem editar clientes.")
     }
 
     const validatedFields = clientSchema.safeParse({
@@ -85,10 +71,7 @@ export async function updateClient(id: string, prevState: ClientActionState, for
     })
 
     if (!validatedFields.success) {
-        return {
-            errors: validatedFields.error.flatten().fieldErrors,
-            message: "Erro na validação dos campos",
-        }
+        throw new Error("Erro na validação dos campos")
     }
 
     const { razaoSocial, cnpj, emailDomain, isActive } = validatedFields.data
@@ -107,9 +90,9 @@ export async function updateClient(id: string, prevState: ClientActionState, for
         console.error("Database Error:", error)
         // @ts-ignore
         if (error.code === 'P2002') {
-            return { message: "Já existe um cliente com este CNPJ." }
+            throw new Error("Já existe um cliente com este CNPJ.")
         }
-        return { message: "Falha ao atualizar cliente. Tente novamente." }
+        throw new Error("Falha ao atualizar cliente. Tente novamente.")
     }
 
     revalidatePath('/dashboard/clients')
