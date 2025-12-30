@@ -23,7 +23,7 @@ export async function getCurrentUserWithRole(): Promise<UserWithRole | null> {
 
     try {
         const dbUser = await prisma.user.findUnique({
-            where: { id: user.id },
+            where: { email: user.email! },
             select: {
                 id: true,
                 email: true,
