@@ -1,7 +1,6 @@
 'use client'
 
-import { useActionState } from "react"
-import { createProject, CreateProjectState } from "@/app/dashboard/projects/actions"
+import { createProject } from "@/app/dashboard/projects/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,9 +11,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 
 // Define types for props
 interface ClientOption {
@@ -35,45 +32,27 @@ interface CreateProjectFormProps {
     families: FamilyOption[]
 }
 
-const initialState: CreateProjectState = {
-    message: null,
-    errors: {}
-}
-
 export function CreateProjectForm({ clients, families }: CreateProjectFormProps) {
-    const [state, formAction, isPending] = useActionState(createProject, initialState)
-
     return (
         <Card className="w-full max-w-2xl mx-auto">
             <CardHeader>
                 <CardTitle>Novo Projeto</CardTitle>
             </CardHeader>
-            <form action={formAction}>
+            <form action={createProject}>
                 <CardContent className="space-y-4">
-                    {state.message && (
-                        <Alert variant="destructive">
-                            <AlertDescription>{state.message}</AlertDescription>
-                        </Alert>
-                    )}
-
                     <div className="space-y-2">
                         <Label htmlFor="name">Nome do Projeto</Label>
                         <Input
                             id="name"
                             name="name"
                             placeholder="Ex: Consultoria Societária 2024"
-                            aria-describedby="name-error"
+                            required
                         />
-                        {state.errors?.name && (
-                            <p id="name-error" className="text-sm text-red-500">
-                                {state.errors.name.join(", ")}
-                            </p>
-                        )}
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="clientId">Cliente</Label>
-                        <Select name="clientId">
+                        <Select name="clientId" required>
                             <SelectTrigger>
                                 <SelectValue placeholder="Selecione um cliente" />
                             </SelectTrigger>
@@ -85,14 +64,11 @@ export function CreateProjectForm({ clients, families }: CreateProjectFormProps)
                                 ))}
                             </SelectContent>
                         </Select>
-                        {state.errors?.clientId && (
-                            <p className="text-sm text-red-500">{state.errors.clientId.join(", ")}</p>
-                        )}
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="familyCode">Família de Produto</Label>
-                        <Select name="familyCode">
+                        <Select name="familyCode" required>
                             <SelectTrigger>
                                 <SelectValue placeholder="Selecione a família do produto" />
                             </SelectTrigger>
@@ -107,17 +83,12 @@ export function CreateProjectForm({ clients, families }: CreateProjectFormProps)
                         <p className="text-xs text-muted-foreground">
                             A família determina a Área responsável e o escopo macro do projeto.
                         </p>
-                        {state.errors?.familyCode && (
-                            <p className="text-sm text-red-500">{state.errors.familyCode.join(", ")}</p>
-                        )}
                     </div>
 
                 </CardContent>
                 <CardFooter className="flex justify-between">
                     <Button variant="outline" type="button" onClick={() => window.history.back()}>Cancelar</Button>
-                    <Button type="submit" disabled={isPending}>
-                        {isPending ? "Criando..." : "Criar Projeto"}
-                    </Button>
+                    <Button type="submit">Criar Projeto</Button>
                 </CardFooter>
             </form>
         </Card>
