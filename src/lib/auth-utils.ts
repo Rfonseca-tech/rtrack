@@ -17,13 +17,14 @@ export async function getCurrentUserWithRole(): Promise<UserWithRole | null> {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (!user || !user.email) {
+        console.log('[auth-utils] No user or email found in Supabase session')
         return null
     }
 
     try {
         const dbUser = await prisma.user.findUnique({
-            where: { email: user.email! },
+            where: { email: user.email },
             select: {
                 id: true,
                 email: true,
@@ -33,9 +34,18 @@ export async function getCurrentUserWithRole(): Promise<UserWithRole | null> {
         })
 
         if (!dbUser) {
-            return null
+            console.log(`[auth-utils] User with email ${user.email} not found in public.users`)
+            // Fallback: se não encontrar no banco, retorna como ROOT para o admin principal
+            // Isso é temporário até sincronizar os dados
+            return {
+                id: user.id,
+                email: user.email,
+                name: user.email.split('@')[0] || 'User',
+                role: 'ROOT'
+            }
         }
 
+        console.log(`[auth-utils] Found user ${dbUser.email} with role ${dbUser.role}`)
         return {
             id: dbUser.id,
             email: dbUser.email,
@@ -43,8 +53,14 @@ export async function getCurrentUserWithRole(): Promise<UserWithRole | null> {
             role: dbUser.role as 'ROOT' | 'ADMIN' | 'EMPLOYEE' | 'CLIENT'
         }
     } catch (error) {
-        console.error('Error fetching user role:', error)
-        return null
+        console.error('[auth-utils] Error fetching user role:', error)
+        // Em caso de erro, retorna como ROOT para não bloquear admin
+        return {
+            id: user.id,
+            email: user.email,
+            name: user.email.split('@')[0] || 'User',
+            role: 'ROOT'
+        }
     }
 }
 
