@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
-import { Plus, Users } from 'lucide-react'
+import { Plus, Users, Pencil, Trash2 } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import {
     Table,
@@ -11,6 +12,8 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { prisma } from '@/infrastructure/database/prisma'
+import { getCurrentUserWithRole, canManageData } from '@/lib/auth-utils'
+import { DeleteClientButton } from './delete-button'
 
 export const metadata: Metadata = {
     title: 'Clientes',
@@ -30,8 +33,12 @@ type ClientWithCount = {
 export default async function ClientsPage() {
     let clients: ClientWithCount[] = []
     let error: string | null = null
+    let userRole: string | null = null
 
     try {
+        const user = await getCurrentUserWithRole()
+        userRole = user?.role || null
+
         clients = await prisma.client.findMany({
             include: {
                 _count: {
@@ -45,13 +52,19 @@ export default async function ClientsPage() {
         error = 'Erro ao carregar clientes. Verifique a conexão com o banco de dados.'
     }
 
+    const canEdit = canManageData(userRole || undefined)
+
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold tracking-tight">Clientes</h1>
-                <Button>
-                    <Plus className="mr-2 h-4 w-4" /> Novo Cliente
-                </Button>
+                {canEdit && (
+                    <Button asChild>
+                        <Link href="/dashboard/clients/new">
+                            <Plus className="mr-2 h-4 w-4" /> Novo Cliente
+                        </Link>
+                    </Button>
+                )}
             </div>
 
             <div className="rounded-md border bg-card">
@@ -68,12 +81,13 @@ export default async function ClientsPage() {
                                 <TableHead>Domínio Email</TableHead>
                                 <TableHead>Projetos</TableHead>
                                 <TableHead>Status</TableHead>
+                                {canEdit && <TableHead className="text-right">Ações</TableHead>}
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {clients.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                                    <TableCell colSpan={canEdit ? 6 : 5} className="h-24 text-center text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
                                             <Users className="h-8 w-8" />
                                             <span>Nenhum cliente cadastrado.</span>
@@ -94,6 +108,18 @@ export default async function ClientsPage() {
                                                 {client.isActive ? "Ativo" : "Inativo"}
                                             </Badge>
                                         </TableCell>
+                                        {canEdit && (
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button variant="ghost" size="icon" asChild>
+                                                        <Link href={`/dashboard/clients/${client.id}/edit`}>
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Link>
+                                                    </Button>
+                                                    <DeleteClientButton clientId={client.id} clientName={client.razaoSocial} />
+                                                </div>
+                                            </TableCell>
+                                        )}
                                     </TableRow>
                                 ))
                             )}

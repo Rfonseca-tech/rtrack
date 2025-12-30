@@ -1,5 +1,5 @@
 import { Metadata } from 'next'
-import { Plus, Briefcase } from 'lucide-react'
+import { Plus, Briefcase, Pencil } from 'lucide-react'
 import Link from 'next/link'
 
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { prisma } from '@/infrastructure/database/prisma'
+import { getCurrentUserWithRole, canManageData } from '@/lib/auth-utils'
+import { DeleteProjectButton } from './delete-button'
 
 export const metadata: Metadata = {
     title: 'Projetos',
@@ -36,8 +38,12 @@ type ProjectWithRelations = {
 export default async function ProjectsPage() {
     let projects: ProjectWithRelations[] = []
     let error: string | null = null
+    let userRole: string | null = null
 
     try {
+        const user = await getCurrentUserWithRole()
+        userRole = user?.role || null
+
         projects = await prisma.project.findMany({
             include: {
                 client: true,
@@ -54,15 +60,19 @@ export default async function ProjectsPage() {
         error = 'Erro ao carregar projetos. Verifique a conexão com o banco de dados.'
     }
 
+    const canEdit = canManageData(userRole || undefined)
+
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold tracking-tight">Projetos</h1>
-                <Button asChild>
-                    <Link href="/dashboard/projects/new">
-                        <Plus className="mr-2 h-4 w-4" /> Novo Projeto
-                    </Link>
-                </Button>
+                {canEdit && (
+                    <Button asChild>
+                        <Link href="/dashboard/projects/new">
+                            <Plus className="mr-2 h-4 w-4" /> Novo Projeto
+                        </Link>
+                    </Button>
+                )}
             </div>
 
             <div className="rounded-md border bg-card">
@@ -107,9 +117,21 @@ export default async function ProjectsPage() {
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="sm" asChild>
-                                                <Link href={`/dashboard/projects/${project.id}`}>Detalhes</Link>
-                                            </Button>
+                                            <div className="flex justify-end gap-2">
+                                                <Button variant="ghost" size="sm" asChild>
+                                                    <Link href={`/dashboard/projects/${project.id}`}>Detalhes</Link>
+                                                </Button>
+                                                {canEdit && (
+                                                    <>
+                                                        <Button variant="ghost" size="icon" asChild>
+                                                            <Link href={`/dashboard/projects/${project.id}/edit`}>
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Link>
+                                                        </Button>
+                                                        <DeleteProjectButton projectId={project.id} projectName={project.name} />
+                                                    </>
+                                                )}
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))
