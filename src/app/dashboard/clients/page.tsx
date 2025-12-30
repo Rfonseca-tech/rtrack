@@ -17,14 +17,22 @@ export const metadata: Metadata = {
 }
 
 export default async function ClientsPage() {
-    const clients = await prisma.client.findMany({
-        include: {
-            _count: {
-                select: { projects: true }
-            }
-        },
-        orderBy: { createdAt: 'desc' }
-    })
+    let clients: Awaited<ReturnType<typeof prisma.client.findMany>> = []
+    let error: string | null = null
+
+    try {
+        clients = await prisma.client.findMany({
+            include: {
+                _count: {
+                    select: { projects: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        })
+    } catch (e) {
+        console.error('Error fetching clients:', e)
+        error = 'Erro ao carregar clientes. Verifique a conexão com o banco de dados.'
+    }
 
     return (
         <div className="flex flex-col gap-4">
@@ -36,45 +44,51 @@ export default async function ClientsPage() {
             </div>
 
             <div className="rounded-md border bg-card">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Razão Social</TableHead>
-                            <TableHead>CNPJ</TableHead>
-                            <TableHead>Domínio Email</TableHead>
-                            <TableHead>Projetos</TableHead>
-                            <TableHead>Status</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {clients.length === 0 ? (
+                {error ? (
+                    <div className="p-8 text-center text-red-500">
+                        <p>{error}</p>
+                    </div>
+                ) : (
+                    <Table>
+                        <TableHeader>
                             <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                                    <div className="flex flex-col items-center gap-2">
-                                        <Users className="h-8 w-8" />
-                                        <span>Nenhum cliente cadastrado.</span>
-                                    </div>
-                                </TableCell>
+                                <TableHead>Razão Social</TableHead>
+                                <TableHead>CNPJ</TableHead>
+                                <TableHead>Domínio Email</TableHead>
+                                <TableHead>Projetos</TableHead>
+                                <TableHead>Status</TableHead>
                             </TableRow>
-                        ) : (
-                            clients.map((client) => (
-                                <TableRow key={client.id}>
-                                    <TableCell className="font-medium">{client.razaoSocial}</TableCell>
-                                    <TableCell>{client.cnpj}</TableCell>
-                                    <TableCell>{client.emailDomain}</TableCell>
-                                    <TableCell>
-                                        <Badge variant="secondary">{client._count.projects}</Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant={client.isActive ? "default" : "destructive"}>
-                                            {client.isActive ? "Ativo" : "Inativo"}
-                                        </Badge>
+                        </TableHeader>
+                        <TableBody>
+                            {clients.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <Users className="h-8 w-8" />
+                                            <span>Nenhum cliente cadastrado.</span>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
+                            ) : (
+                                clients.map((client) => (
+                                    <TableRow key={client.id}>
+                                        <TableCell className="font-medium">{client.razaoSocial}</TableCell>
+                                        <TableCell>{client.cnpj}</TableCell>
+                                        <TableCell>{client.emailDomain}</TableCell>
+                                        <TableCell>
+                                            <Badge variant="secondary">{client._count.projects}</Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={client.isActive ? "default" : "destructive"}>
+                                                {client.isActive ? "Ativo" : "Inativo"}
+                                            </Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                )}
             </div>
         </div>
     )

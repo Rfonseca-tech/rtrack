@@ -19,17 +19,25 @@ export const metadata: Metadata = {
 }
 
 export default async function ProjectsPage() {
-    const projects = await prisma.project.findMany({
-        include: {
-            client: true,
-            family: {
-                include: {
-                    area: true
+    let projects: Awaited<ReturnType<typeof prisma.project.findMany>> = []
+    let error: string | null = null
+
+    try {
+        projects = await prisma.project.findMany({
+            include: {
+                client: true,
+                family: {
+                    include: {
+                        area: true
+                    }
                 }
-            }
-        },
-        orderBy: { updatedAt: 'desc' }
-    })
+            },
+            orderBy: { updatedAt: 'desc' }
+        })
+    } catch (e) {
+        console.error('Error fetching projects:', e)
+        error = 'Erro ao carregar projetos. Verifique a conexão com o banco de dados.'
+    }
 
     return (
         <div className="flex flex-col gap-4">
@@ -43,48 +51,54 @@ export default async function ProjectsPage() {
             </div>
 
             <div className="rounded-md border bg-card">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Nome</TableHead>
-                            <TableHead>Cliente</TableHead>
-                            <TableHead>Família</TableHead>
-                            <TableHead>Área</TableHead>
-                            <TableHead>Progresso</TableHead>
-                            <TableHead className="text-right">Ações</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {projects.length === 0 ? (
+                {error ? (
+                    <div className="p-8 text-center text-red-500">
+                        <p>{error}</p>
+                    </div>
+                ) : (
+                    <Table>
+                        <TableHeader>
                             <TableRow>
-                                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                                    Nenhum projeto encontrado.
-                                </TableCell>
+                                <TableHead>Nome</TableHead>
+                                <TableHead>Cliente</TableHead>
+                                <TableHead>Família</TableHead>
+                                <TableHead>Área</TableHead>
+                                <TableHead>Progresso</TableHead>
+                                <TableHead className="text-right">Ações</TableHead>
                             </TableRow>
-                        ) : (
-                            projects.map((project) => (
-                                <TableRow key={project.id}>
-                                    <TableCell className="font-medium">{project.name}</TableCell>
-                                    <TableCell>{project.client?.razaoSocial || '-'}</TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline">{project.familyCode}</Badge>
-                                    </TableCell>
-                                    <TableCell>{project.family?.area?.name || '-'}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={project.progress === 100 ? "default" : "secondary"}>
-                                            {project.progress}%
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="ghost" size="sm" asChild>
-                                            <Link href={`/dashboard/projects/${project.id}`}>Detalhes</Link>
-                                        </Button>
+                        </TableHeader>
+                        <TableBody>
+                            {projects.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                                        Nenhum projeto encontrado.
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
+                            ) : (
+                                projects.map((project) => (
+                                    <TableRow key={project.id}>
+                                        <TableCell className="font-medium">{project.name}</TableCell>
+                                        <TableCell>{project.client?.razaoSocial || '-'}</TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline">{project.familyCode}</Badge>
+                                        </TableCell>
+                                        <TableCell>{project.family?.area?.name || '-'}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={project.progress === 100 ? "default" : "secondary"}>
+                                                {project.progress}%
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="sm" asChild>
+                                                <Link href={`/dashboard/projects/${project.id}`}>Detalhes</Link>
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                )}
             </div>
         </div>
     )
