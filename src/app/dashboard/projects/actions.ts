@@ -4,7 +4,8 @@ import { redirect } from "next/navigation"
 import { z } from "zod"
 import { prisma } from "@/infrastructure/database/prisma"
 import { revalidatePath } from "next/cache"
-import { getCurrentUserWithRole, canManageData } from "@/lib/auth-utils"
+import { getCurrentUserWithRole } from "@/lib/auth-utils"
+import { canManageData } from "@/lib/permissions"
 
 const projectSchema = z.object({
     name: z.string().min(1, "Nome é obrigatório"),

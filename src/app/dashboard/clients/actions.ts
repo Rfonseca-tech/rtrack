@@ -4,7 +4,8 @@ import { redirect } from "next/navigation"
 import { z } from "zod"
 import { prisma } from "@/infrastructure/database/prisma"
 import { revalidatePath } from "next/cache"
-import { getCurrentUserWithRole, canManageData } from "@/lib/auth-utils"
+import { getCurrentUserWithRole } from "@/lib/auth-utils"
+import { canManageData } from "@/lib/permissions"
 
 const clientSchema = z.object({
     razaoSocial: z.string().min(1, "Razão Social é obrigatória"),

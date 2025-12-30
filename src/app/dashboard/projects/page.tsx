@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { prisma } from '@/infrastructure/database/prisma'
-import { getCurrentUserWithRole, canManageData } from '@/lib/auth-utils'
+import { getCurrentUserWithRole } from '@/lib/auth-utils'
+import { canManageData } from '@/lib/permissions'
 import { DeleteProjectButton } from './delete-button'
 
 export const metadata: Metadata = {

@@ -13,7 +13,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import { getCurrentUserWithRole, canManageData } from '@/lib/auth-utils'
+import { getCurrentUserWithRole } from '@/lib/auth-utils'
+import { canManageData } from '@/lib/permissions'
 import { prisma } from '@/infrastructure/database/prisma'
 import { updateProject } from '../../actions'
 
