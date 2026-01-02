@@ -6,7 +6,7 @@ import { prisma } from "@/infrastructure/database/prisma"
 import { revalidatePath } from "next/cache"
 import { getCurrentUserWithRole } from "@/lib/auth-utils"
 import { canManageData } from "@/lib/permissions"
-import { createClient } from "@/infrastructure/auth/supabase-server"
+import { createAdminClient } from "@/infrastructure/auth/supabase-server"
 import { UserRole } from "@prisma/client"
 
 const userSchema = z.object({
@@ -41,7 +41,7 @@ export async function createUser(formData: FormData): Promise<void> {
 
     try {
         // Create user in Supabase Auth
-        const supabase = await createClient()
+        const supabase = createAdminClient()
         const { data: authData, error: authError } = await supabase.auth.admin.createUser({
             email,
             password: tempPassword,
