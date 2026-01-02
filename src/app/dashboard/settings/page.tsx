@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
-import { Users, MapPin, User } from 'lucide-react'
+import { Users, MapPin, User, FolderTree, Package } from 'lucide-react'
 
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { getCurrentUserWithRole } from '@/lib/auth-utils'
@@ -39,6 +39,18 @@ export default async function SettingsPage() {
             description: 'Gerencie as áreas de atuação do escritório',
             icon: MapPin,
             href: '/dashboard/settings/areas',
+        },
+        {
+            title: 'Famílias de Produtos',
+            description: 'Gerencie as famílias de produtos',
+            icon: FolderTree,
+            href: '/dashboard/settings/families',
+        },
+        {
+            title: 'Produtos',
+            description: 'Gerencie os produtos e templates de tarefas',
+            icon: Package,
+            href: '/dashboard/settings/products',
         },
         {
             title: 'Usuários',
