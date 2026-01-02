@@ -5,7 +5,7 @@ import { z } from "zod"
 import { prisma } from "@/infrastructure/database/prisma"
 import { revalidatePath } from "next/cache"
 import { getCurrentUserWithRole } from "@/lib/auth-utils"
-import { canManageData } from "@/lib/permissions"
+import { canManageData, canCreateProject } from "@/lib/permissions"
 
 const projectSchema = z.object({
     name: z.string().min(1, "Nome é obrigatório"),
@@ -16,8 +16,8 @@ const projectSchema = z.object({
 export async function createProject(formData: FormData): Promise<void> {
     const user = await getCurrentUserWithRole()
 
-    if (!user || !canManageData(user.role)) {
-        throw new Error("Não autorizado. Apenas ROOT e ADMIN podem criar projetos.")
+    if (!user || !canCreateProject(user.role)) {
+        throw new Error("Não autorizado. Você não tem permissão para criar projetos.")
     }
 
     const validatedFields = projectSchema.safeParse({
@@ -38,6 +38,12 @@ export async function createProject(formData: FormData): Promise<void> {
                 name,
                 clientId,
                 familyCode,
+                // Automatically add the creator as a collaborator
+                collaborators: {
+                    create: {
+                        userId: user.id
+                    }
+                }
             },
         })
     } catch (error) {

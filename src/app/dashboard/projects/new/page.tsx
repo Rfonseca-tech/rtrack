@@ -1,14 +1,12 @@
-import { prisma } from "@/infrastructure/database/prisma"
-import { CreateProjectForm } from "@/components/projects/create-project-form"
-import { redirect } from "next/navigation"
-import { createClient } from "@/infrastructure/auth/supabase-server"
+import { canCreateProject } from "@/lib/permissions"
 
 export default async function NewProjectPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    const currentUser = await getCurrentUserWithRole()
 
-    if (!user) {
-        redirect('/login')
+    if (!user || (currentUser && !canCreateProject(currentUser.role))) {
+        redirect('/dashboard/projects')
     }
 
     const clients = await prisma.client.findMany({
