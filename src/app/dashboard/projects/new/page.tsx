@@ -1,3 +1,8 @@
+import { prisma } from "@/infrastructure/database/prisma"
+import { CreateProjectForm } from "@/components/projects/create-project-form"
+import { redirect } from "next/navigation"
+import { createClient } from "@/infrastructure/auth/supabase-server"
+import { getCurrentUserWithRole } from "@/lib/auth-utils"
 import { canCreateProject } from "@/lib/permissions"
 
 export default async function NewProjectPage() {
