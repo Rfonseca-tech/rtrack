@@ -49,6 +49,11 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
         notFound()
     }
 
+    // ADMIN cannot edit ROOT users - only ROOT can
+    if (userToEdit.role === 'ROOT' && currentUser.role !== 'ROOT') {
+        redirect('/dashboard/settings/users')
+    }
+
     // Only ROOT can edit other ROOTs or ADMINs
     const availableRoles = currentUser.role === 'ROOT'
         ? [{ value: 'ROOT', label: 'Root' }, ...roleOptions]

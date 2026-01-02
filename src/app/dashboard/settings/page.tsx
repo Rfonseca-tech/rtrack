@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
-import { Users, MapPin, Building2 } from 'lucide-react'
+import { Users, MapPin, User } from 'lucide-react'
 
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { getCurrentUserWithRole } from '@/lib/auth-utils'
@@ -14,11 +14,24 @@ export const metadata: Metadata = {
 export default async function SettingsPage() {
     const user = await getCurrentUserWithRole()
 
-    if (!user || !canManageData(user.role)) {
-        redirect('/dashboard')
+    if (!user) {
+        redirect('/login')
     }
 
-    const settingsCards = [
+    const canAdmin = canManageData(user.role)
+
+    // Cards visíveis para todos
+    const commonCards = [
+        {
+            title: 'Minha Conta',
+            description: 'Altere sua senha e veja seus dados',
+            icon: User,
+            href: '/dashboard/settings/account',
+        },
+    ]
+
+    // Cards visíveis apenas para ADMIN/ROOT
+    const adminCards = canAdmin ? [
         {
             title: 'Áreas',
             description: 'Gerencie as áreas de atuação do escritório',
@@ -31,7 +44,9 @@ export default async function SettingsPage() {
             icon: Users,
             href: '/dashboard/settings/users',
         },
-    ]
+    ] : []
+
+    const settingsCards = [...commonCards, ...adminCards]
 
     return (
         <div className="flex flex-col gap-6">

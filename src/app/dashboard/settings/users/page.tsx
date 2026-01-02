@@ -137,7 +137,7 @@ export default async function UsersPage() {
                                             {u.isActive ? 'Ativo' : 'Inativo'}
                                         </Badge>
                                     </TableCell>
-                                    {canEdit && u.id !== user?.id && (
+                                    {canEdit && u.id !== user?.id && (isRoot || u.role !== 'ROOT') && (
                                         <TableCell>
                                             <div className="flex items-center gap-1">
                                                 <Button variant="ghost" size="icon" asChild className="h-8 w-8">
@@ -151,6 +151,11 @@ export default async function UsersPage() {
                                                     isRoot={isRoot}
                                                 />
                                             </div>
+                                        </TableCell>
+                                    )}
+                                    {canEdit && u.id !== user?.id && !isRoot && u.role === 'ROOT' && (
+                                        <TableCell>
+                                            <span className="text-xs text-muted-foreground">Protegido</span>
                                         </TableCell>
                                     )}
                                     {canEdit && u.id === user?.id && (
