@@ -22,6 +22,7 @@ type TaskNode = {
     title: string
     description: string | null
     status: string
+    startDate: Date | null
     dueDate: Date | null
     assignedTo: string | null
     order: number
@@ -215,7 +216,7 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
                             </Button>
                         </div>
                     ) : (
-                        <TaskAccordion tasks={taskTree} />
+                        <TaskAccordion tasks={taskTree} projectId={project.id} />
                     )}
                 </CardContent>
             </Card>
