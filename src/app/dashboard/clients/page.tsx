@@ -20,6 +20,8 @@ export const metadata: Metadata = {
     title: 'Clientes',
 }
 
+export const dynamic = 'force-dynamic'
+
 type ClientWithCount = {
     id: string
     razaoSocial: string

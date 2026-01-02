@@ -21,6 +21,8 @@ export const metadata: Metadata = {
     title: 'Tarefas',
 }
 
+export const dynamic = 'force-dynamic'
+
 type TaskWithProject = {
     id: string
     title: string

@@ -21,6 +21,8 @@ export const metadata: Metadata = {
     title: 'Projetos',
 }
 
+export const dynamic = 'force-dynamic'
+
 type ProjectWithRelations = {
     id: string
     name: string

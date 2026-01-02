@@ -20,6 +20,8 @@ export const metadata: Metadata = {
     title: 'Áreas',
 }
 
+export const dynamic = 'force-dynamic'
+
 type AreaWithCount = {
     id: string
     name: string

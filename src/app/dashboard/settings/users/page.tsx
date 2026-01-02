@@ -21,6 +21,8 @@ export const metadata: Metadata = {
     title: 'Usuários',
 }
 
+export const dynamic = 'force-dynamic'
+
 const roleLabels: Record<string, string> = {
     ROOT: 'Root',
     ADMIN: 'Administrador',
