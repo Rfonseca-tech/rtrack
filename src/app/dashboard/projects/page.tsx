@@ -47,7 +47,18 @@ export default async function ProjectsPage() {
         const user = await getCurrentUserWithRole()
         userRole = user?.role || null
 
+        const whereArgs: any = {}
+
+        if (userRole !== 'ROOT' && userRole !== 'ADMIN') {
+            whereArgs.collaborators = {
+                some: {
+                    userId: user.id
+                }
+            }
+        }
+
         projects = await prisma.project.findMany({
+            where: whereArgs,
             include: {
                 client: true,
                 family: {

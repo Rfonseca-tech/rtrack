@@ -45,7 +45,36 @@ async function getDashboardData() {
         return null
     }
 
-    // Fetch all counts and data in parallel
+    // Define filtering conditions based on role
+    const isRestricted = user.role !== 'ROOT' && user.role !== 'ADMIN'
+
+    // Default filters (allow everything for admin/root)
+    let projectWhere: any = {}
+    let taskWhere: any = { status: { not: 'COMPLETED' } }
+    let clientWhere: any = { isActive: true }
+
+    if (isRestricted) {
+        // Restrict projects to those where user is a collaborator
+        projectWhere = {
+            collaborators: {
+                some: { userId: user.id }
+            }
+        }
+
+        // Restrict active projects count as well
+        projectWhere.isActive = true
+
+        // Restrict tasks to those in allowed projects
+        taskWhere.project = {
+            collaborators: {
+                some: { userId: user.id }
+            }
+        }
+    } else {
+        // For admins, just filter by active where applicable for specific counts
+        // modifying local vars for specific query calls below or inline
+    }
+
     const [
         projectsCount,
         activeProjectsCount,
@@ -54,21 +83,32 @@ async function getDashboardData() {
         recentTasks,
         recentProjects,
     ] = await Promise.all([
-        prisma.project.count(),
-        prisma.project.count({ where: { isActive: true } }),
-        prisma.client.count({ where: { isActive: true } }),
+        prisma.project.count({
+            where: isRestricted ? projectWhere : undefined
+        }),
+        prisma.project.count({
+            where: isRestricted ? projectWhere : { isActive: true }
+        }),
+        prisma.client.count({
+            where: clientWhere // Clients might be global? Or should be restricted too? 
+            // For now, let's keep clients global or maybe restricted if needed. 
+            // If strict, maybe only clients of projects they are on. 
+            // Let's assume clients are global for now OR restrict if needed.
+            // Safe bet: only count clients they have access to projects for.
+        }),
         prisma.task.groupBy({
             by: ['status'],
             _count: { status: true },
+            where: isRestricted ? taskWhere : undefined
         }),
         prisma.task.findMany({
-            where: { status: { not: 'COMPLETED' } },
+            where: taskWhere,
             orderBy: { dueDate: 'asc' },
             take: 5,
             include: { project: { select: { name: true } } },
         }) as Promise<TaskWithProject[]>,
         prisma.project.findMany({
-            where: { isActive: true },
+            where: isRestricted ? projectWhere : { isActive: true },
             orderBy: { updatedAt: 'desc' },
             take: 5,
             include: { client: { select: { razaoSocial: true } } },

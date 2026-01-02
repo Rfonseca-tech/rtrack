@@ -45,7 +45,20 @@ export default async function TasksPage() {
     let error: string | null = null
 
     try {
+        const whereArgs: any = {}
+
+        if (userRole !== 'ROOT' && userRole !== 'ADMIN' && user?.id) {
+            whereArgs.project = {
+                collaborators: {
+                    some: {
+                        userId: user.id
+                    }
+                }
+            }
+        }
+
         tasks = await prisma.task.findMany({
+            where: whereArgs,
             select: {
                 id: true,
                 title: true,
