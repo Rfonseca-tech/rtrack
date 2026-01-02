@@ -14,8 +14,8 @@ import {
 } from '@/components/ui/table'
 import { prisma } from '@/infrastructure/database/prisma'
 import { getCurrentUserWithRole } from '@/lib/auth-utils'
-import { canManageData } from '@/lib/permissions'
-import { DeleteUserButton } from './delete-button'
+import { canManageData, canEditOwnAuth } from '@/lib/permissions'
+import { UserActions } from './user-actions'
 
 export const metadata: Metadata = {
     title: 'Usuários',
@@ -74,6 +74,7 @@ export default async function UsersPage() {
     }
 
     const canEdit = canManageData(userRole || undefined)
+    const isRoot = canEditOwnAuth(userRole || undefined)
 
     return (
         <div className="flex flex-col gap-4">
@@ -115,7 +116,7 @@ export default async function UsersPage() {
                                 <TableHead>Área</TableHead>
                                 <TableHead>Perfil</TableHead>
                                 <TableHead>Status</TableHead>
-                                {canEdit && <TableHead className="w-[100px]">Ações</TableHead>}
+                                {canEdit && <TableHead className="w-[150px]">Ações</TableHead>}
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -136,7 +137,7 @@ export default async function UsersPage() {
                                             {u.isActive ? 'Ativo' : 'Inativo'}
                                         </Badge>
                                     </TableCell>
-                                    {canEdit && (
+                                    {canEdit && u.id !== user?.id && (
                                         <TableCell>
                                             <div className="flex items-center gap-1">
                                                 <Button variant="ghost" size="icon" asChild className="h-8 w-8">
@@ -144,8 +145,17 @@ export default async function UsersPage() {
                                                         <Pencil className="h-4 w-4" />
                                                     </Link>
                                                 </Button>
-                                                {u.isActive && <DeleteUserButton userId={u.id} />}
+                                                <UserActions
+                                                    userId={u.id}
+                                                    userName={u.name}
+                                                    isRoot={isRoot}
+                                                />
                                             </div>
+                                        </TableCell>
+                                    )}
+                                    {canEdit && u.id === user?.id && (
+                                        <TableCell>
+                                            <span className="text-xs text-muted-foreground">Você</span>
                                         </TableCell>
                                     )}
                                 </TableRow>

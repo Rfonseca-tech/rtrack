@@ -5,9 +5,10 @@ import { z } from "zod"
 import { prisma } from "@/infrastructure/database/prisma"
 import { revalidatePath } from "next/cache"
 import { getCurrentUserWithRole } from "@/lib/auth-utils"
-import { canManageData } from "@/lib/permissions"
+import { canManageData, canEditOwnAuth } from "@/lib/permissions"
 import { createAdminClient } from "@/infrastructure/auth/supabase-server"
 import { UserRole } from "@prisma/client"
+import { cookies } from "next/headers"
 
 const userSchema = z.object({
     name: z.string().min(1, "Nome é obrigatório"),
@@ -16,11 +17,19 @@ const userSchema = z.object({
     areaId: z.string().optional(),
 })
 
-export async function createUser(formData: FormData): Promise<void> {
+// Return type that includes the temp password to show to admin
+export type CreateUserResult = {
+    success: boolean
+    tempPassword?: string
+    userId?: string
+    error?: string
+}
+
+export async function createUserWithPassword(formData: FormData): Promise<CreateUserResult> {
     const currentUser = await getCurrentUserWithRole()
 
     if (!currentUser || !canManageData(currentUser.role)) {
-        throw new Error("Não autorizado.")
+        return { success: false, error: "Não autorizado." }
     }
 
     const validatedFields = userSchema.safeParse({
@@ -31,7 +40,7 @@ export async function createUser(formData: FormData): Promise<void> {
     })
 
     if (!validatedFields.success) {
-        throw new Error("Erro na validação dos campos")
+        return { success: false, error: "Erro na validação dos campos" }
     }
 
     const { name, email, role, areaId } = validatedFields.data
@@ -40,7 +49,6 @@ export async function createUser(formData: FormData): Promise<void> {
     const tempPassword = `Temp@${Math.random().toString(36).substring(2, 10)}`
 
     try {
-        // Create user in Supabase Auth
         const supabase = createAdminClient()
         const { data: authData, error: authError } = await supabase.auth.admin.createUser({
             email,
@@ -50,10 +58,9 @@ export async function createUser(formData: FormData): Promise<void> {
 
         if (authError) {
             console.error("Supabase Auth Error:", authError)
-            throw new Error("Falha ao criar usuário no sistema de autenticação: " + authError.message)
+            return { success: false, error: "Falha ao criar usuário: " + authError.message }
         }
 
-        // Create user in database
         await prisma.user.create({
             data: {
                 id: authData.user.id,
@@ -64,20 +71,88 @@ export async function createUser(formData: FormData): Promise<void> {
             },
         })
 
-        // TODO: Send email with temporary password
-        console.log(`Usuário criado: ${email} - Senha temporária: ${tempPassword}`)
+        revalidatePath('/dashboard/settings/users')
+
+        return {
+            success: true,
+            tempPassword,
+            userId: authData.user.id
+        }
 
     } catch (error) {
         console.error("Database Error:", error)
         // @ts-ignore
         if (error.code === 'P2002') {
-            throw new Error("Já existe um usuário com este email.")
+            return { success: false, error: "Já existe um usuário com este email." }
         }
-        throw error
+        return { success: false, error: "Falha ao criar usuário." }
+    }
+}
+
+// Reset password - generates new temp password
+export async function resetUserPassword(userId: string): Promise<{ success: boolean; newPassword?: string; error?: string }> {
+    const currentUser = await getCurrentUserWithRole()
+
+    // Only ROOT can reset passwords
+    if (!currentUser || !canEditOwnAuth(currentUser.role)) {
+        return { success: false, error: "Apenas ROOT pode redefinir senhas." }
     }
 
-    revalidatePath('/dashboard/settings/users')
-    redirect('/dashboard/settings/users')
+    // Generate new temporary password
+    const newPassword = `Temp@${Math.random().toString(36).substring(2, 10)}`
+
+    try {
+        const supabase = createAdminClient()
+        const { error } = await supabase.auth.admin.updateUserById(userId, {
+            password: newPassword,
+        })
+
+        if (error) {
+            console.error("Supabase Auth Error:", error)
+            return { success: false, error: "Falha ao redefinir senha: " + error.message }
+        }
+
+        return { success: true, newPassword }
+    } catch (error) {
+        console.error("Error resetting password:", error)
+        return { success: false, error: "Erro ao redefinir senha." }
+    }
+}
+
+// Hard delete user - removes from auth and database
+export async function hardDeleteUser(userId: string): Promise<{ success: boolean; error?: string }> {
+    const currentUser = await getCurrentUserWithRole()
+
+    // Only ROOT can hard delete
+    if (!currentUser || !canEditOwnAuth(currentUser.role)) {
+        return { success: false, error: "Apenas ROOT pode excluir permanentemente." }
+    }
+
+    if (currentUser.id === userId) {
+        return { success: false, error: "Você não pode excluir seu próprio usuário." }
+    }
+
+    try {
+        // Delete from Supabase Auth
+        const supabase = createAdminClient()
+        const { error: authError } = await supabase.auth.admin.deleteUser(userId)
+
+        if (authError) {
+            console.error("Supabase Auth Error:", authError)
+            return { success: false, error: "Falha ao excluir do Auth: " + authError.message }
+        }
+
+        // Delete from database
+        await prisma.user.delete({
+            where: { id: userId },
+        })
+
+        revalidatePath('/dashboard/settings/users')
+        return { success: true }
+    } catch (error) {
+        console.error("Error deleting user:", error)
+        return { success: false, error: "Erro ao excluir usuário." }
+    }
 }
 
 export async function updateUser(id: string, formData: FormData): Promise<void> {
@@ -124,20 +199,19 @@ export async function updateUser(id: string, formData: FormData): Promise<void> 
     redirect('/dashboard/settings/users')
 }
 
-export async function deleteUser(id: string): Promise<{ success: boolean; message?: string }> {
+// Soft delete (deactivate)
+export async function deactivateUser(id: string): Promise<{ success: boolean; message?: string }> {
     const currentUser = await getCurrentUserWithRole()
 
     if (!currentUser || !canManageData(currentUser.role)) {
         return { success: false, message: "Não autorizado." }
     }
 
-    // Prevent self-deletion
     if (currentUser.id === id) {
-        return { success: false, message: "Você não pode excluir seu próprio usuário." }
+        return { success: false, message: "Você não pode desativar seu próprio usuário." }
     }
 
     try {
-        // Soft delete - just deactivate
         await prisma.user.update({
             where: { id },
             data: { isActive: false },
