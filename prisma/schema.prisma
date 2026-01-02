@@ -194,6 +194,7 @@ model Task {
   dueDate     DateTime?
   order       Int
   isForClient Boolean    @default(false)
+  assignedTo  String?    // Responsável: "Contabilidade", "Cliente", "Jurídico", etc.
 
   documents   Document[]
   auditLogs   AuditLog[]

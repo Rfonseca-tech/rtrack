@@ -1,41 +1,85 @@
+import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Edit, Users, FileText, CheckSquare } from 'lucide-react'
+import { ArrowLeft, Calendar, Briefcase, CheckCircle2, Clock, Users, FileText, Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { prisma } from '@/infrastructure/database/prisma'
+import { getCurrentUserWithRole } from '@/lib/auth-utils'
+import { TaskAccordion } from '@/components/tasks/task-accordion'
 
-interface ProjectDetailPageProps {
-    params: Promise<{ id: string }>
+export const metadata: Metadata = {
+    title: 'Detalhes do Projeto',
 }
 
-export default async function ProjectDetailPage({ params }: ProjectDetailPageProps) {
+export const dynamic = 'force-dynamic'
+
+type TaskNode = {
+    id: string
+    title: string
+    description: string | null
+    status: string
+    dueDate: Date | null
+    assignedTo: string | null
+    order: number
+    documents: { id: string; fileName: string }[]
+    children: TaskNode[]
+}
+
+async function buildTaskTree(tasks: TaskNode[]): Promise<TaskNode[]> {
+    const taskMap = new Map<string, TaskNode>()
+    const rootTasks: TaskNode[] = []
+
+    // Create all task nodes with empty children
+    tasks.forEach(task => {
+        taskMap.set(task.id, { ...task, children: [] })
+    })
+
+    // Build tree structure
+    tasks.forEach(task => {
+        const node = taskMap.get(task.id)!
+        const parentId = (task as unknown as { parentId?: string }).parentId
+
+        if (parentId && taskMap.has(parentId)) {
+            taskMap.get(parentId)!.children.push(node)
+        } else {
+            rootTasks.push(node)
+        }
+    })
+
+    return rootTasks
+}
+
+export default async function ProjectDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
+    const user = await getCurrentUserWithRole()
+
+    if (!user) {
+        notFound()
+    }
 
     const project = await prisma.project.findUnique({
         where: { id },
         include: {
             client: true,
             family: {
-                include: {
-                    area: true
-                }
+                include: { area: true }
             },
             tasks: {
-                orderBy: { createdAt: 'desc' },
-                take: 5
-            },
-            collaborators: {
                 include: {
-                    user: true
-                }
+                    documents: {
+                        select: { id: true, fileName: true }
+                    }
+                },
+                orderBy: { order: 'asc' }
             },
-            contracts: {
-                include: {
-                    product: true
+            _count: {
+                select: {
+                    tasks: true,
+                    contracts: true
                 }
             }
         }
@@ -44,6 +88,22 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     if (!project) {
         notFound()
     }
+
+    // Calculate task stats
+    const taskStats = project.tasks.reduce((acc, task) => {
+        acc[task.status] = (acc[task.status] || 0) + 1
+        return acc
+    }, {} as Record<string, number>)
+
+    const completedTasks = taskStats['COMPLETED'] || 0
+    const pendingTasks = taskStats['PENDING'] || 0
+    const inProgressTasks = taskStats['IN_PROGRESS'] || 0
+    const waitingTasks = taskStats['WAITING_VALIDATION'] || 0
+    const totalTasks = project.tasks.length
+    const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+
+    // Build task tree for accordion
+    const taskTree = await buildTaskTree(project.tasks as unknown as TaskNode[])
 
     return (
         <div className="flex flex-col gap-6">
@@ -57,111 +117,105 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                 <div className="flex-1">
                     <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
                     <p className="text-muted-foreground">
-                        {project.client?.razaoSocial} • {project.family?.area?.name || 'Sem área'}
+                        {project.client.razaoSocial} • {project.family.name}
                     </p>
                 </div>
-                <Button variant="outline" asChild>
-                    <Link href={`/dashboard/projects/${project.id}/edit`}>
-                        <Edit className="mr-2 h-4 w-4" /> Editar
+                <Button asChild>
+                    <Link href={`/dashboard/tasks/new?projectId=${project.id}`}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Nova Tarefa
                     </Link>
                 </Button>
             </div>
 
-            {/* Progress */}
-            <Card>
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Progresso Geral</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center gap-4">
-                        <Progress value={project.progress} className="flex-1" />
-                        <span className="text-2xl font-bold">{project.progress}%</span>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Info Cards */}
-            <div className="grid gap-4 md:grid-cols-3">
+            {/* Stats Cards */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Família</CardTitle>
-                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium">Progresso</CardTitle>
+                        <Briefcase className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-xl font-bold">{project.familyCode}</div>
-                        <p className="text-xs text-muted-foreground">{project.family?.name}</p>
+                        <div className="text-2xl font-bold">{progress}%</div>
+                        <Progress value={progress} className="mt-2" />
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Colaboradores</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium">Concluídas</CardTitle>
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-xl font-bold">{project.collaborators.length}</div>
-                        <p className="text-xs text-muted-foreground">pessoas no projeto</p>
+                        <div className="text-2xl font-bold text-green-600">{completedTasks}</div>
+                        <p className="text-xs text-muted-foreground">de {totalTasks} tarefas</p>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Tarefas</CardTitle>
-                        <CheckSquare className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
+                        <Clock className="h-4 w-4 text-yellow-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-xl font-bold">{project.tasks.length}</div>
-                        <p className="text-xs text-muted-foreground">tarefas cadastradas</p>
+                        <div className="text-2xl font-bold text-yellow-600">{pendingTasks + inProgressTasks}</div>
+                        <p className="text-xs text-muted-foreground">{pendingTasks} pendentes, {inProgressTasks} em andamento</p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Aguardando</CardTitle>
+                        <Users className="h-4 w-4 text-purple-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-purple-600">{waitingTasks}</div>
+                        <p className="text-xs text-muted-foreground">aguardando validação</p>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Contracts/Products */}
+            {/* Tasks Accordion */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Produtos Contratados</CardTitle>
-                    <CardDescription>Serviços vinculados a este projeto</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {project.contracts.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Nenhum produto contratado ainda.</p>
-                    ) : (
-                        <div className="flex flex-wrap gap-2">
-                            {project.contracts.map((contract) => (
-                                <Badge key={contract.id} variant="secondary">
-                                    {contract.product.code} - {contract.product.name}
-                                </Badge>
-                            ))}
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>Tarefas do Projeto</CardTitle>
+                            <CardDescription>
+                                Acompanhe o progresso de cada etapa
+                            </CardDescription>
                         </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Recent Tasks */}
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle>Tarefas Recentes</CardTitle>
-                        <CardDescription>Últimas 5 tarefas do projeto</CardDescription>
+                        <div className="flex gap-2">
+                            <Badge variant="secondary" className="gap-1">
+                                <div className="w-2 h-2 rounded-full bg-green-500" />
+                                Concluída
+                            </Badge>
+                            <Badge variant="secondary" className="gap-1">
+                                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                Em Andamento
+                            </Badge>
+                            <Badge variant="secondary" className="gap-1">
+                                <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                                Pendente
+                            </Badge>
+                        </div>
                     </div>
-                    <Button variant="outline" size="sm" asChild>
-                        <Link href={`/dashboard/projects/${project.id}/tasks`}>Ver Todas</Link>
-                    </Button>
                 </CardHeader>
                 <CardContent>
-                    {project.tasks.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Nenhuma tarefa cadastrada.</p>
+                    {taskTree.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                            <FileText className="h-12 w-12 mb-4" />
+                            <h3 className="text-lg font-medium mb-2">Nenhuma tarefa cadastrada</h3>
+                            <p className="text-sm mb-4">Adicione tarefas para acompanhar o progresso do projeto</p>
+                            <Button asChild>
+                                <Link href={`/dashboard/tasks/new?projectId=${project.id}`}>
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Adicionar Primeira Tarefa
+                                </Link>
+                            </Button>
+                        </div>
                     ) : (
-                        <ul className="space-y-2">
-                            {project.tasks.map((task) => (
-                                <li key={task.id} className="flex items-center justify-between rounded-lg border p-3">
-                                    <span className="font-medium">{task.title}</span>
-                                    <Badge variant={task.status === 'COMPLETED' ? 'default' : 'secondary'}>
-                                        {task.status}
-                                    </Badge>
-                                </li>
-                            ))}
-                        </ul>
+                        <TaskAccordion tasks={taskTree} />
                     )}
                 </CardContent>
             </Card>
