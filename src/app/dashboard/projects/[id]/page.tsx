@@ -1,15 +1,18 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, Briefcase, CheckCircle2, Clock, Users, FileText, Plus } from 'lucide-react'
+import { ArrowLeft, Calendar, Briefcase, CheckCircle2, Clock, Users, FileText, Plus, BarChart3 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { prisma } from '@/infrastructure/database/prisma'
 import { getCurrentUserWithRole } from '@/lib/auth-utils'
 import { TaskAccordion } from '@/components/tasks/task-accordion'
+import { GanttChart, type GanttTask } from '@/components/gantt'
+import { OutcomeTimeline, deriveTimelineStatus, type TimelineMilestone } from '@/components/gantt'
 
 export const metadata: Metadata = {
     title: 'Detalhes do Projeto',
@@ -106,6 +109,36 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
     // Build task tree for accordion
     const taskTree = await buildTaskTree(project.tasks as unknown as TaskNode[])
 
+    // Check if user is a client
+    const isClient = user.role === 'CLIENT'
+
+    // Prepare tasks for Gantt Chart (Admin/Employee view)
+    const ganttTasks: GanttTask[] = project.tasks.map(task => ({
+        id: task.id,
+        title: task.title,
+        startDate: task.startDate,
+        endDate: task.dueDate,
+        progress: task.status === 'COMPLETED' ? 100 : task.status === 'IN_PROGRESS' ? 50 : 0,
+        status: task.status as GanttTask['status'],
+        parentId: (task as unknown as { parentId?: string }).parentId,
+    }))
+
+    // Prepare milestones for Client Timeline
+    const timelineMilestones: TimelineMilestone[] = project.tasks
+        .filter(t => t.dueDate) // Only tasks with dates
+        .sort((a, b) => {
+            if (!a.dueDate || !b.dueDate) return 0
+            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+        })
+        .slice(0, 8) // Limit to 8 most relevant
+        .map(task => ({
+            id: task.id,
+            title: task.title,
+            date: task.dueDate,
+            status: deriveTimelineStatus(task.dueDate, task.status === 'COMPLETED'),
+            description: task.description || undefined,
+        }))
+
     return (
         <div className="flex flex-col gap-6">
             {/* Header */}
@@ -175,6 +208,37 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Timeline/Gantt Section */}
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="flex items-center gap-2">
+                                <BarChart3 className="h-5 w-5" />
+                                {isClient ? 'Linha do Tempo' : 'Cronograma'}
+                            </CardTitle>
+                            <CardDescription>
+                                {isClient
+                                    ? 'Acompanhe as etapas do seu caso'
+                                    : 'Visualize o cronograma de tarefas do projeto'}
+                            </CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {isClient ? (
+                        // Client View: Static Timeline
+                        <OutcomeTimeline milestones={timelineMilestones} />
+                    ) : (
+                        // Admin/Employee View: Interactive Gantt
+                        <GanttChart
+                            tasks={ganttTasks}
+                            projectName={project.name}
+                        />
+                    )}
+                </CardContent>
+            </Card>
 
             {/* Tasks Accordion */}
             <Card>
