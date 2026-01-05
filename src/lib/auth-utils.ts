@@ -33,8 +33,27 @@ export async function getCurrentUserWithRole(): Promise<UserWithRole | null> {
             }
         })
 
-        console.log(`[auth-utils] User with email ${user.email} not found in public.users`)
-        // Fallback: se não encontrar no banco, retorna como EMPLOYEE por segurança (Fail Closed)
+        if (!dbUser) {
+            console.log(`[auth-utils] User with email ${user.email} not found in public.users`)
+            // Fallback: se não encontrar no banco, retorna como EMPLOYEE por segurança (Fail Closed)
+            return {
+                id: user.id,
+                email: user.email,
+                name: user.email.split('@')[0] || 'User',
+                role: 'EMPLOYEE'
+            }
+        }
+
+        console.log(`[auth-utils] Found user ${dbUser.email} with role ${dbUser.role}`)
+        return {
+            id: dbUser.id,
+            email: dbUser.email,
+            name: dbUser.name,
+            role: dbUser.role as 'ROOT' | 'ADMIN' | 'EMPLOYEE' | 'CLIENT'
+        }
+    } catch (error) {
+        console.error('[auth-utils] Error fetching user role:', error)
+        // Em caso de erro, retorna como EMPLOYEE por segurança
         return {
             id: user.id,
             email: user.email,
@@ -42,22 +61,4 @@ export async function getCurrentUserWithRole(): Promise<UserWithRole | null> {
             role: 'EMPLOYEE'
         }
     }
-
-        console.log(`[auth-utils] Found user ${dbUser.email} with role ${dbUser.role}`)
-    return {
-        id: dbUser.id,
-        email: dbUser.email,
-        name: dbUser.name,
-        role: dbUser.role as 'ROOT' | 'ADMIN' | 'EMPLOYEE' | 'CLIENT'
-    }
-} catch (error) {
-    console.error('[auth-utils] Error fetching user role:', error)
-    // Em caso de erro, retorna como EMPLOYEE por segurança
-    return {
-        id: user.id,
-        email: user.email,
-        name: user.email.split('@')[0] || 'User',
-        role: 'EMPLOYEE'
-    }
-}
 }
