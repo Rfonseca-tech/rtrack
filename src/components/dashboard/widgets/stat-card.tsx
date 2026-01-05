@@ -1,4 +1,4 @@
-import { BentoCard } from "./bento-card"
+import { BentoCard } from "../bento-card"
 import { LucideIcon } from "lucide-react"
 
 interface StatCardProps {
