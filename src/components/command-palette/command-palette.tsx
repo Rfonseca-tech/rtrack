@@ -13,9 +13,10 @@ import {
 interface CommandPaletteProps {
     open: boolean
     onOpenChange: (open: boolean) => void
+    role?: string
 }
 
-export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
+export function CommandPalette({ open, onOpenChange, role }: CommandPaletteProps) {
     const router = useRouter()
     const [search, setSearch] = React.useState("")
 
@@ -54,30 +55,32 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                             Nenhum resultado encontrado.
                         </CommandPrimitive.Empty>
 
-                        {/* Quick Actions */}
-                        <CommandPrimitive.Group heading="Ações Rápidas">
-                            <CommandPrimitive.Item
-                                onSelect={() => runCommand(() => router.push("/dashboard/projects/new"))}
-                                className="cursor-pointer rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground"
-                            >
-                                <Plus className="mr-2 h-4 w-4" />
-                                <span>Novo Projeto</span>
-                            </CommandPrimitive.Item>
-                            <CommandPrimitive.Item
-                                onSelect={() => runCommand(() => router.push("/dashboard/clients/new"))}
-                                className="cursor-pointer rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground"
-                            >
-                                <Plus className="mr-2 h-4 w-4" />
-                                <span>Novo Cliente</span>
-                            </CommandPrimitive.Item>
-                            <CommandPrimitive.Item
-                                onSelect={() => runCommand(() => router.push("/dashboard/tasks/new"))}
-                                className="cursor-pointer rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground"
-                            >
-                                <Plus className="mr-2 h-4 w-4" />
-                                <span>Nova Tarefa</span>
-                            </CommandPrimitive.Item>
-                        </CommandPrimitive.Group>
+                        {/* Quick Actions - Only for Employees/Admins */}
+                        {role !== 'CLIENT' && (
+                            <CommandPrimitive.Group heading="Ações Rápidas">
+                                <CommandPrimitive.Item
+                                    onSelect={() => runCommand(() => router.push("/dashboard/projects/new"))}
+                                    className="cursor-pointer rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground"
+                                >
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    <span>Novo Projeto</span>
+                                </CommandPrimitive.Item>
+                                <CommandPrimitive.Item
+                                    onSelect={() => runCommand(() => router.push("/dashboard/clients/new"))}
+                                    className="cursor-pointer rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground"
+                                >
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    <span>Novo Cliente</span>
+                                </CommandPrimitive.Item>
+                                <CommandPrimitive.Item
+                                    onSelect={() => runCommand(() => router.push("/dashboard/tasks/new"))}
+                                    className="cursor-pointer rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground"
+                                >
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    <span>Nova Tarefa</span>
+                                </CommandPrimitive.Item>
+                            </CommandPrimitive.Group>
+                        )}
 
                         {/* Navigation */}
                         <CommandPrimitive.Group heading="Navegação">
