@@ -52,7 +52,11 @@ export default async function NewTaskPage() {
             </div>
 
             <div className="rounded-md border bg-card p-6 max-w-2xl">
-                <form action={createTask} className="space-y-4">
+                <form action={async (formData: FormData) => {
+                    'use server'
+                    const { createTask } = await import('../actions')
+                    await createTask(null, formData)
+                }} className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="title">Título</Label>
                         <Input
