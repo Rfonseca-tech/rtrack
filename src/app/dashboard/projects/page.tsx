@@ -49,7 +49,7 @@ export default async function ProjectsPage() {
 
         const whereArgs: any = {}
 
-        if (userRole !== 'ROOT' && userRole !== 'ADMIN') {
+        if (userRole !== 'ROOT' && userRole !== 'ADMIN' && user) {
             whereArgs.collaborators = {
                 some: {
                     userId: user.id
