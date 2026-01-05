@@ -5,16 +5,26 @@ import {
     Users,
     CheckCircle2,
     Clock,
-    AlertCircle,
     TrendingUp,
-    ArrowRight
+    FolderPlus,
+    UserPlus,
+    ListTodo,
 } from 'lucide-react'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { prisma } from '@/infrastructure/database/prisma'
 import { getCurrentUserWithRole } from '@/lib/auth-utils'
+import { canManageData } from '@/lib/permissions'
+
+// Bento Grid Components
+import { DashboardGrid, BentoCard } from '@/components/dashboard'
+import {
+    StatCard,
+    ProjectsWidget,
+    TasksWidget,
+    QuickActionsWidget,
+    ProgressWidget,
+    TeamWidget
+} from '@/components/dashboard/widgets'
 
 export const metadata: Metadata = {
     title: 'Dashboard',
@@ -25,15 +35,16 @@ export const dynamic = 'force-dynamic'
 type TaskWithProject = {
     id: string
     title: string
-    status: string
+    status: 'PENDING' | 'IN_PROGRESS' | 'WAITING_VALIDATION' | 'COMPLETED'
     dueDate: Date | null
     project: { name: string }
 }
 
-type RecentProject = {
+type ProjectWithClient = {
     id: string
     name: string
     progress: number
+    isActive: boolean
     client: { razaoSocial: string }
     updatedAt: Date
 }
@@ -45,34 +56,24 @@ async function getDashboardData() {
         return null
     }
 
-    // Define filtering conditions based on role
+    const isClient = user.role === 'CLIENT'
     const isRestricted = user.role !== 'ROOT' && user.role !== 'ADMIN'
 
-    // Default filters (allow everything for admin/root)
+    // Build query conditions
     let projectWhere: any = {}
     let taskWhere: any = { status: { not: 'COMPLETED' } }
-    let clientWhere: any = { isActive: true }
 
     if (isRestricted) {
-        // Restrict projects to those where user is a collaborator
         projectWhere = {
             collaborators: {
                 some: { userId: user.id }
             }
         }
-
-        // Restrict active projects count as well
-        projectWhere.isActive = true
-
-        // Restrict tasks to those in allowed projects
         taskWhere.project = {
             collaborators: {
                 some: { userId: user.id }
             }
         }
-    } else {
-        // For admins, just filter by active where applicable for specific counts
-        // modifying local vars for specific query calls below or inline
     }
 
     const [
@@ -87,14 +88,10 @@ async function getDashboardData() {
             where: isRestricted ? projectWhere : undefined
         }),
         prisma.project.count({
-            where: isRestricted ? projectWhere : { isActive: true }
+            where: isRestricted ? { ...projectWhere, isActive: true } : { isActive: true }
         }),
         prisma.client.count({
-            where: clientWhere // Clients might be global? Or should be restricted too? 
-            // For now, let's keep clients global or maybe restricted if needed. 
-            // If strict, maybe only clients of projects they are on. 
-            // Let's assume clients are global for now OR restrict if needed.
-            // Safe bet: only count clients they have access to projects for.
+            where: { isActive: true }
         }),
         prisma.task.groupBy({
             by: ['status'],
@@ -104,15 +101,15 @@ async function getDashboardData() {
         prisma.task.findMany({
             where: taskWhere,
             orderBy: { dueDate: 'asc' },
-            take: 5,
+            take: 6,
             include: { project: { select: { name: true } } },
         }) as Promise<TaskWithProject[]>,
         prisma.project.findMany({
-            where: isRestricted ? projectWhere : { isActive: true },
+            where: isRestricted ? { ...projectWhere, isActive: true } : { isActive: true },
             orderBy: { updatedAt: 'desc' },
             take: 5,
             include: { client: { select: { razaoSocial: true } } },
-        }) as Promise<RecentProject[]>,
+        }) as Promise<ProjectWithClient[]>,
     ])
 
     // Process task stats
@@ -129,6 +126,8 @@ async function getDashboardData() {
 
     return {
         user,
+        isClient,
+        canManage: canManageData(user.role),
         projectsCount,
         activeProjectsCount,
         clientsCount,
@@ -142,45 +141,49 @@ async function getDashboardData() {
     }
 }
 
-const statusLabels: Record<string, string> = {
-    PENDING: 'Pendente',
-    IN_PROGRESS: 'Em Andamento',
-    WAITING_VALIDATION: 'Aguardando Validação',
-    COMPLETED: 'Concluída',
-}
-
-const statusColors: Record<string, string> = {
-    PENDING: 'bg-yellow-500',
-    IN_PROGRESS: 'bg-blue-500',
-    WAITING_VALIDATION: 'bg-purple-500',
-    COMPLETED: 'bg-green-500',
-}
-
-export default async function DashboardPage() {
-    const data = await getDashboardData()
-
-    if (!data) {
-        return (
-            <div className="flex items-center justify-center h-[50vh]">
-                <p className="text-muted-foreground">Carregando...</p>
-            </div>
-        )
-    }
-
+// ================================================================
+// ADMIN / LAWYER DASHBOARD VIEW
+// ================================================================
+function AdminDashboard({ data }: { data: NonNullable<Awaited<ReturnType<typeof getDashboardData>>> }) {
     const {
         user,
-        projectsCount,
         activeProjectsCount,
+        projectsCount,
         clientsCount,
         pendingTasks,
         inProgressTasks,
         completedTasks,
         totalTasks,
         recentTasks,
-        recentProjects
+        recentProjects,
     } = data
 
     const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+
+    // Map projects for widget
+    const projectsForWidget = recentProjects.map(p => ({
+        id: p.id,
+        name: p.name,
+        clientName: p.client.razaoSocial,
+        status: p.isActive ? 'ACTIVE' as const : 'ARCHIVED' as const,
+        progress: p.progress,
+    }))
+
+    // Map tasks for widget
+    const tasksForWidget = recentTasks.map(t => ({
+        id: t.id,
+        title: t.title,
+        projectName: t.project.name,
+        status: t.status,
+        dueDate: t.dueDate,
+    }))
+
+    const quickActions = [
+        { label: 'Novo Projeto', href: '/dashboard/projects/new', icon: FolderPlus },
+        { label: 'Novo Cliente', href: '/dashboard/clients/new', icon: UserPlus },
+        { label: 'Nova Tarefa', href: '/dashboard/tasks/new', icon: ListTodo },
+        { label: 'Ver Projetos', href: '/dashboard/projects', icon: Briefcase },
+    ]
 
     return (
         <div className="flex flex-col gap-6">
@@ -194,184 +197,165 @@ export default async function DashboardPage() {
                 </p>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Projetos Ativos</CardTitle>
-                        <Briefcase className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{activeProjectsCount}</div>
-                        <p className="text-xs text-muted-foreground">
-                            de {projectsCount} projetos totais
-                        </p>
-                    </CardContent>
-                </Card>
+            {/* Bento Grid */}
+            <DashboardGrid>
+                {/* Row 1: Stats */}
+                <StatCard
+                    title="Projetos Ativos"
+                    value={activeProjectsCount}
+                    description={`de ${projectsCount} projetos totais`}
+                    icon={Briefcase}
+                />
+                <StatCard
+                    title="Clientes Ativos"
+                    value={clientsCount}
+                    description="clientes no sistema"
+                    icon={Users}
+                />
+                <StatCard
+                    title="Tarefas Pendentes"
+                    value={pendingTasks + inProgressTasks}
+                    description={`${pendingTasks} pendentes, ${inProgressTasks} em andamento`}
+                    icon={Clock}
+                />
+                <StatCard
+                    title="Taxa de Conclusão"
+                    value={`${completionRate}%`}
+                    description={`${completedTasks} de ${totalTasks} tarefas`}
+                    icon={TrendingUp}
+                    trend={completionRate > 50 ? { value: completionRate, isPositive: true } : undefined}
+                />
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Clientes</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{clientsCount}</div>
-                        <p className="text-xs text-muted-foreground">
-                            clientes ativos
-                        </p>
-                    </CardContent>
-                </Card>
+                {/* Row 2: Projects (Wide) + Tasks (Tall) */}
+                <ProjectsWidget
+                    projects={projectsForWidget}
+                    title="Projetos Ativos"
+                />
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Tarefas Pendentes</CardTitle>
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{pendingTasks + inProgressTasks}</div>
-                        <p className="text-xs text-muted-foreground">
-                            {pendingTasks} pendentes, {inProgressTasks} em andamento
-                        </p>
-                    </CardContent>
-                </Card>
+                <TasksWidget
+                    tasks={tasksForWidget}
+                    title="Tarefas Urgentes"
+                />
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Taxa de Conclusão</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{completionRate}%</div>
-                        <div className="mt-2 h-2 w-full bg-secondary rounded-full overflow-hidden">
-                            <div
-                                className="h-full bg-primary transition-all"
-                                style={{ width: `${completionRate}%` }}
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="grid gap-4 md:grid-cols-2">
-                {/* Recent Tasks */}
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle>Tarefas Recentes</CardTitle>
-                                <CardDescription>Próximas tarefas a serem concluídas</CardDescription>
-                            </div>
-                            <Button variant="ghost" size="sm" asChild>
-                                <Link href="/dashboard/tasks">
-                                    Ver todas <ArrowRight className="ml-1 h-4 w-4" />
-                                </Link>
-                            </Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        {recentTasks.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                                <CheckCircle2 className="h-8 w-8 mb-2" />
-                                <p className="text-sm">Nenhuma tarefa pendente</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {recentTasks.map((task) => (
-                                    <div key={task.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                                        <div className={`w-2 h-2 rounded-full ${statusColors[task.status]}`} />
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium truncate">{task.title}</p>
-                                            <p className="text-xs text-muted-foreground truncate">{task.project.name}</p>
-                                        </div>
-                                        <Badge variant="secondary" className="shrink-0 text-xs">
-                                            {statusLabels[task.status]}
-                                        </Badge>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* Recent Projects */}
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle>Projetos Recentes</CardTitle>
-                                <CardDescription>Últimos projetos atualizados</CardDescription>
-                            </div>
-                            <Button variant="ghost" size="sm" asChild>
-                                <Link href="/dashboard/projects">
-                                    Ver todos <ArrowRight className="ml-1 h-4 w-4" />
-                                </Link>
-                            </Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        {recentProjects.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                                <Briefcase className="h-8 w-8 mb-2" />
-                                <p className="text-sm">Nenhum projeto encontrado</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {recentProjects.map((project) => (
-                                    <Link
-                                        key={project.id}
-                                        href={`/dashboard/projects/${project.id}`}
-                                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
-                                    >
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium truncate">{project.name}</p>
-                                            <p className="text-xs text-muted-foreground truncate">{project.client.razaoSocial}</p>
-                                        </div>
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            <div className="w-16 h-2 bg-secondary rounded-full overflow-hidden">
-                                                <div
-                                                    className={`h-full transition-all ${project.progress === 100 ? 'bg-green-500' : 'bg-primary'}`}
-                                                    style={{ width: `${project.progress}%` }}
-                                                />
-                                            </div>
-                                            <span className="text-xs text-muted-foreground w-8">{project.progress}%</span>
-                                        </div>
-                                    </Link>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Quick Actions */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Ações Rápidas</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                        <Button asChild variant="outline">
-                            <Link href="/dashboard/projects/new">
-                                <Briefcase className="mr-2 h-4 w-4" />
-                                Novo Projeto
-                            </Link>
-                        </Button>
-                        <Button asChild variant="outline">
-                            <Link href="/dashboard/clients/new">
-                                <Users className="mr-2 h-4 w-4" />
-                                Novo Cliente
-                            </Link>
-                        </Button>
-                        <Button asChild variant="outline">
-                            <Link href="/dashboard/tasks/new">
-                                <CheckCircle2 className="mr-2 h-4 w-4" />
-                                Nova Tarefa
-                            </Link>
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+                {/* Row 3: Quick Actions */}
+                <QuickActionsWidget actions={quickActions} />
+            </DashboardGrid>
         </div>
     )
+}
+
+// ================================================================
+// CLIENT DASHBOARD VIEW
+// ================================================================
+function ClientDashboard({ data }: { data: NonNullable<Awaited<ReturnType<typeof getDashboardData>>> }) {
+    const { user, recentProjects, recentTasks, completedTasks, totalTasks } = data
+
+    // Get the client's main project (first active one)
+    const mainProject = recentProjects[0]
+
+    // Calculate overall progress
+    const overallProgress = totalTasks > 0
+        ? Math.round((completedTasks / totalTasks) * 100)
+        : 0
+
+    // Mock team data (should come from collaborators in real implementation)
+    const teamMembers = [
+        { name: 'Dr. Suporte', role: 'Advogado Responsável', email: 'suporte@rfonseca.adv.br' },
+    ]
+
+    return (
+        <div className="flex flex-col gap-6">
+            {/* Header */}
+            <div>
+                <h1 className="text-2xl font-bold tracking-tight">
+                    Olá, {user.name?.split(' ')[0] || 'Cliente'}! 👋
+                </h1>
+                <p className="text-muted-foreground">
+                    Acompanhe o progresso do seu caso
+                </p>
+            </div>
+
+            {/* Bento Grid - Client View */}
+            <DashboardGrid>
+                {/* Main Project Progress (Wide) */}
+                {mainProject ? (
+                    <ProgressWidget
+                        projectName={mainProject.name}
+                        progress={overallProgress}
+                        currentPhase="Em Andamento"
+                        totalTasks={totalTasks}
+                        completedTasks={completedTasks}
+                    />
+                ) : (
+                    <BentoCard size="wide" title="Seu Caso">
+                        <p className="text-muted-foreground">
+                            Nenhum projeto ativo no momento.
+                        </p>
+                    </BentoCard>
+                )}
+
+                {/* Your Team */}
+                <TeamWidget members={teamMembers} />
+
+                {/* Recent Activity */}
+                <BentoCard size="tall" title="Atividade Recente" icon={<Clock className="h-4 w-4" />}>
+                    <div className="space-y-3">
+                        {recentTasks.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                                Nenhuma atividade recente.
+                            </p>
+                        ) : (
+                            recentTasks.slice(0, 4).map((task) => (
+                                <div key={task.id} className="border-l-2 border-primary/30 pl-3">
+                                    <p className="text-sm font-medium">{task.title}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {task.status === 'COMPLETED' ? '✅ Concluída' :
+                                            task.status === 'IN_PROGRESS' ? '🔄 Em andamento' :
+                                                '⏳ Pendente'}
+                                    </p>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </BentoCard>
+
+                {/* Next Steps */}
+                <BentoCard title="Próximos Passos" icon={<CheckCircle2 className="h-4 w-4" />}>
+                    <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                            Aguardando atualizações da equipe jurídica.
+                        </p>
+                        <Link
+                            href="/dashboard/projects"
+                            className="inline-flex items-center text-sm text-primary hover:underline"
+                        >
+                            Ver detalhes do projeto →
+                        </Link>
+                    </div>
+                </BentoCard>
+            </DashboardGrid>
+        </div>
+    )
+}
+
+// ================================================================
+// MAIN PAGE COMPONENT
+// ================================================================
+export default async function DashboardPage() {
+    const data = await getDashboardData()
+
+    if (!data) {
+        return (
+            <div className="flex items-center justify-center h-[50vh]">
+                <p className="text-muted-foreground">Carregando...</p>
+            </div>
+        )
+    }
+
+    // Render different dashboard based on user role
+    if (data.isClient) {
+        return <ClientDashboard data={data} />
+    }
+
+    return <AdminDashboard data={data} />
 }

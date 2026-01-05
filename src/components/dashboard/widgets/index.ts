@@ -1,0 +1,6 @@
+export { StatCard } from "./stat-card"
+export { ProjectsWidget } from "./projects-widget"
+export { TasksWidget } from "./tasks-widget"
+export { QuickActionsWidget } from "./quick-actions-widget"
+export { ProgressWidget } from "./progress-widget"
+export { TeamWidget } from "./team-widget"
