@@ -48,12 +48,19 @@ export function BentoCard({
             className={cn(
                 // Base styling
                 "relative overflow-hidden",
-                "rounded border bg-card p-4",
-                // Glassmorphism effect
-                "backdrop-blur-sm bg-card/95",
-                // Hover effect
-                "transition-all duration-200",
-                "hover:shadow-lg hover:-translate-y-0.5",
+                "rounded-lg border bg-card p-4",
+                // Enhanced Glassmorphism effect
+                "backdrop-blur-md bg-gradient-to-br from-card/90 to-card/70",
+                "border-white/10 dark:border-white/5",
+                // Premium hover effect with subtle glow
+                "transition-all duration-300 ease-out",
+                "hover:shadow-xl hover:shadow-primary/5",
+                "hover:-translate-y-1 hover:border-primary/20",
+                // Subtle inner glow
+                "before:absolute before:inset-0 before:rounded-lg",
+                "before:bg-gradient-to-br before:from-white/5 before:to-transparent",
+                "before:pointer-events-none before:opacity-0 hover:before:opacity-100",
+                "before:transition-opacity before:duration-300",
                 // Size variant
                 sizeClasses[size],
                 className
