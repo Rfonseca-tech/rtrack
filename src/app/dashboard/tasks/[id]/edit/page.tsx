@@ -57,7 +57,11 @@ export default async function EditTaskPage({ params }: { params: Promise<{ id: s
         notFound()
     }
 
-    const updateTaskWithId = updateTask.bind(null, id)
+    async function updateTaskAction(formData: FormData) {
+        "use server"
+        await updateTask(id, formData)
+        redirect('/dashboard/tasks')
+    }
 
     return (
         <div className="flex flex-col gap-4">
@@ -71,7 +75,7 @@ export default async function EditTaskPage({ params }: { params: Promise<{ id: s
             </div>
 
             <div className="rounded-md border bg-card p-6 max-w-2xl">
-                <form action={updateTaskWithId} className="space-y-4">
+                <form action={updateTaskAction} className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="title">Título</Label>
                         <Input
