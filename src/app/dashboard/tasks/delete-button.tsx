@@ -17,7 +17,7 @@ export function DeleteTaskButton({ taskId }: DeleteTaskButtonProps) {
             startTransition(async () => {
                 const result = await deleteTask(taskId)
                 if (!result.success) {
-                    alert(result.message || 'Erro ao excluir tarefa')
+                    alert(result.error || 'Erro ao excluir tarefa')
                 }
             })
         }
