@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Montserrat } from "next/font/google";
 import { CommandPaletteProvider } from "@/components/command-palette/command-palette-provider";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -40,7 +41,9 @@ export default async function RootLayout({
         <CommandPaletteProvider role={user?.role}>
           {children}
         </CommandPaletteProvider>
+        <Toaster position="bottom-right" richColors closeButton />
       </body>
     </html>
   );
 }
+
