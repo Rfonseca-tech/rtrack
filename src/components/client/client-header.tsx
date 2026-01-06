@@ -6,6 +6,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { signout } from "@/app/auth/actions"
 
 interface ClientHeaderProps {
     userName: string
@@ -160,13 +161,15 @@ export function ClientHeader({
 
                         {/* Menu Footer - Logout button */}
                         <div className="absolute bottom-0 left-0 right-0 p-4 border-t safe-area-inset">
-                            <Link
-                                href="/login"
-                                className="flex items-center gap-4 px-4 py-4 rounded-xl text-destructive hover:bg-destructive/10 active:bg-destructive/20 transition-colors min-h-[56px]"
-                            >
-                                <LogOut className="h-6 w-6" />
-                                <span className="text-base font-medium">Sair</span>
-                            </Link>
+                            <form action={signout}>
+                                <button
+                                    type="submit"
+                                    className="flex items-center gap-4 px-4 py-4 rounded-xl text-destructive hover:bg-destructive/10 active:bg-destructive/20 transition-colors min-h-[56px] w-full"
+                                >
+                                    <LogOut className="h-6 w-6" />
+                                    <span className="text-base font-medium">Sair</span>
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>
