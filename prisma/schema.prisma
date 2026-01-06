@@ -124,16 +124,32 @@ model TaskTemplate {
 // ==========================================
 
 model Client {
-  id          String    @id @default(cuid())
+  id          String        @id @default(cuid())
   razaoSocial String
-  cnpj        String    @unique
+  cnpj        String        @unique
   emailDomain String
-  isActive    Boolean   @default(true)
+  phone       String?       // WhatsApp number
+  contractUrl String?       // URL to contract PDF
+  isActive    Boolean       @default(true)
   projects    Project[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  emails      ClientEmail[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@map("clients")
+}
+
+model ClientEmail {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  email     String
+  label     String?  // "principal", "financeiro", "técnico"
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([clientId])
+  @@map("client_emails")
 }
 
 // ==========================================
