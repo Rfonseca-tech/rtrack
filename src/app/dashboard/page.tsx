@@ -1,4 +1,5 @@
 import { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import {
     Briefcase,
@@ -56,7 +57,11 @@ async function getDashboardData() {
         return null
     }
 
-    const isClient = user.role === 'CLIENT'
+    // Redirect CLIENT users to the new client portal
+    if (user.role === 'CLIENT') {
+        redirect('/client')
+    }
+
     const isRestricted = user.role !== 'ROOT' && user.role !== 'ADMIN'
 
     // Build query conditions
@@ -126,7 +131,7 @@ async function getDashboardData() {
 
     return {
         user,
-        isClient,
+        isClient: false, // CLIENT users are redirected to /client before reaching here
         canManage: canManageData(user.role),
         projectsCount,
         activeProjectsCount,
