@@ -3,9 +3,8 @@
 import * as React from "react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { Paperclip, ChevronDown, ChevronUp, FileText, Download } from "lucide-react"
+import { Paperclip, ChevronDown, ChevronUp, FileText, Download, Clock, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 
 export interface ActivityDocument {
     id: string
@@ -27,14 +26,13 @@ export interface ActivityCardProps {
 }
 
 /**
- * ActivityCard - Chat-like card for displaying service activities
+ * ActivityCard - Mobile-first chat-like card for service activities
  * 
  * Features:
- * - Responsible person as "sender"
- * - Content of the activity
- * - Date/time in bottom right
- * - Attachment indicator if documents
+ * - Large touch targets throughout
+ * - Chat bubble style design
  * - Expandable details section
+ * - Touch-friendly document list
  */
 export function ActivityCard({
     id,
@@ -61,47 +59,61 @@ export function ActivityCard({
     return (
         <div
             className={cn(
-                "relative p-4 rounded-xl border bg-card",
-                "transition-all duration-200",
-                hasExpandableContent && "cursor-pointer hover:border-primary/30",
-                expanded && "ring-1 ring-primary/20"
+                // Base card styles - Chat bubble effect
+                "relative p-4 rounded-2xl border-2 bg-card",
+                // Mobile-first spacing
+                "min-h-[80px]",
+                // Touch feedback
+                "transition-all duration-150",
+                hasExpandableContent && "active:bg-muted/30",
+                expanded && "border-primary/30 shadow-md"
             )}
             onClick={() => hasExpandableContent && setExpanded(!expanded)}
         >
-            {/* Header: Avatar + Name */}
+            {/* Header: Avatar + Name + Time */}
             <div className="flex items-start gap-3">
-                {/* Avatar */}
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary text-sm font-medium shrink-0">
+                {/* Avatar - Large for mobile */}
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary text-base font-semibold shrink-0">
                     {initials}
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                    {/* Name */}
-                    <p className="font-medium text-sm">{responsibleName}</p>
+                    {/* Name and Time row */}
+                    <div className="flex items-center justify-between gap-2">
+                        <p className="font-semibold text-base">{responsibleName}</p>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                            {format(date, "dd/MM HH:mm", { locale: ptBR })}
+                        </span>
+                    </div>
 
-                    {/* Activity content */}
-                    <p className="text-sm text-foreground/80 mt-1 leading-relaxed">
+                    {/* Activity content - Larger text for readability */}
+                    <p className="text-base text-foreground/90 mt-2 leading-relaxed">
                         {content}
                     </p>
 
-                    {/* Attachments indicator */}
-                    {documents && documents.length > 0 && !expanded && (
-                        <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-                            <Paperclip className="h-3 w-3" />
-                            <span>
-                                {documents.length} {documents.length === 1 ? "anexo" : "anexos"}
-                            </span>
-                        </div>
-                    )}
+                    {/* Bottom row: Attachments + Expand button */}
+                    <div className="flex items-center justify-between mt-3 pt-2">
+                        {/* Attachments indicator */}
+                        {documents && documents.length > 0 && !expanded && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Paperclip className="h-4 w-4" />
+                                <span>
+                                    {documents.length} {documents.length === 1 ? "anexo" : "anexos"}
+                                </span>
+                            </div>
+                        )}
 
-                    {/* Date/Time - Bottom right */}
-                    <div className="flex items-center justify-between mt-3">
+                        {/* Expand button - Large touch target */}
                         {hasExpandableContent && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-xs text-muted-foreground"
+                            <button
+                                type="button"
+                                className={cn(
+                                    "ml-auto flex items-center gap-1.5 px-4 py-2 rounded-full",
+                                    "text-sm font-medium text-muted-foreground",
+                                    "bg-muted/50 active:bg-muted transition-colors",
+                                    "min-h-[40px]"
+                                )}
                                 onClick={(e) => {
                                     e.stopPropagation()
                                     setExpanded(!expanded)
@@ -109,57 +121,64 @@ export function ActivityCard({
                             >
                                 {expanded ? (
                                     <>
-                                        <ChevronUp className="h-3 w-3 mr-1" />
+                                        <ChevronUp className="h-4 w-4" />
                                         Menos
                                     </>
                                 ) : (
                                     <>
-                                        <ChevronDown className="h-3 w-3 mr-1" />
-                                        Detalhes
+                                        <ChevronDown className="h-4 w-4" />
+                                        Ver mais
                                     </>
                                 )}
-                            </Button>
+                            </button>
                         )}
-                        <span className="text-xs text-muted-foreground ml-auto">
-                            {format(date, "dd/MM HH:mm", { locale: ptBR })}
-                        </span>
                     </div>
                 </div>
             </div>
 
             {/* Expanded content */}
             {expanded && hasExpandableContent && (
-                <div className="mt-4 pt-4 border-t space-y-4" onClick={(e) => e.stopPropagation()}>
-                    {/* Details */}
-                    {(details || status || deadline) && (
-                        <div className="space-y-2">
-                            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                Detalhes
-                            </h4>
+                <div
+                    className="mt-4 pt-4 border-t space-y-4"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {/* Status and Deadline */}
+                    {(status || deadline) && (
+                        <div className="grid grid-cols-2 gap-3">
                             {status && (
-                                <div className="flex items-center gap-2 text-sm">
-                                    <span className="text-muted-foreground">Status:</span>
-                                    <span className="font-medium">{status}</span>
+                                <div className="p-3 rounded-xl bg-muted/50">
+                                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        <span className="text-xs font-medium uppercase tracking-wider">Status</span>
+                                    </div>
+                                    <p className="text-sm font-semibold">{status}</p>
                                 </div>
                             )}
                             {deadline && (
-                                <div className="flex items-center gap-2 text-sm">
-                                    <span className="text-muted-foreground">Prazo:</span>
-                                    <span className="font-medium">
+                                <div className="p-3 rounded-xl bg-muted/50">
+                                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                                        <Clock className="h-4 w-4" />
+                                        <span className="text-xs font-medium uppercase tracking-wider">Prazo</span>
+                                    </div>
+                                    <p className="text-sm font-semibold">
                                         {format(deadline, "dd/MM/yyyy", { locale: ptBR })}
-                                    </span>
+                                    </p>
                                 </div>
-                            )}
-                            {details && (
-                                <p className="text-sm text-foreground/80">{details}</p>
                             )}
                         </div>
                     )}
 
-                    {/* Documents */}
+                    {/* Additional details */}
+                    {details && (
+                        <div className="p-3 rounded-xl bg-muted/30">
+                            <p className="text-sm text-foreground/80 leading-relaxed">{details}</p>
+                        </div>
+                    )}
+
+                    {/* Documents - Large touch targets */}
                     {documents && documents.length > 0 && (
                         <div className="space-y-2">
-                            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-1">
                                 Anexos
                             </h4>
                             <div className="space-y-2">
@@ -170,19 +189,21 @@ export function ActivityCard({
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className={cn(
-                                            "flex items-center gap-3 p-3 rounded-lg border",
-                                            "hover:bg-muted/50 transition-colors",
-                                            "touch-target"
+                                            "flex items-center gap-4 p-4 rounded-xl border-2",
+                                            "bg-card active:bg-muted transition-colors",
+                                            "min-h-[64px]" // Large touch target
                                         )}
                                     >
-                                        <FileText className="h-5 w-5 text-muted-foreground" />
+                                        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
+                                            <FileText className="h-5 w-5 text-primary" />
+                                        </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-medium truncate">{doc.name}</p>
                                             {doc.size && (
                                                 <p className="text-xs text-muted-foreground">{doc.size}</p>
                                             )}
                                         </div>
-                                        <Download className="h-4 w-4 text-muted-foreground" />
+                                        <Download className="h-5 w-5 text-muted-foreground shrink-0" />
                                     </a>
                                 ))}
                             </div>

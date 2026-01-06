@@ -80,17 +80,17 @@ export default async function ServiceDetailPage({ params }: ServicePageProps) {
     }))
 
     return (
-        <>
+        <div className="min-h-screen bg-background">
             <ClientHeader
                 userName={user.name || "Cliente"}
                 userEmail={user.email || undefined}
                 title={project.name}
                 showBackButton={true}
             />
-            <main className="p-4 space-y-4">
-                {/* Activity Feed */}
+            {/* Activity Feed - Mobile-first layout */}
+            <main className="p-5 pb-8 space-y-4">
                 {activities.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                         {activities.map((activity) => (
                             <ActivityCard
                                 key={activity.id}
@@ -105,13 +105,19 @@ export default async function ServiceDetailPage({ params }: ServicePageProps) {
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-12">
-                        <p className="text-muted-foreground">
-                            Nenhuma atualização ainda.
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                            <span className="text-2xl">💬</span>
+                        </div>
+                        <p className="text-lg font-medium text-foreground mb-2">
+                            Nenhuma atualização ainda
+                        </p>
+                        <p className="text-sm text-muted-foreground max-w-[260px]">
+                            Quando houver atualizações no seu serviço, elas aparecerão aqui.
                         </p>
                     </div>
                 )}
             </main>
-        </>
+        </div>
     )
 }

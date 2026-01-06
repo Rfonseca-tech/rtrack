@@ -25,22 +25,25 @@ export default async function ClientDashboardPage() {
 
     if (!client) {
         return (
-            <>
+            <div className="min-h-screen bg-background">
                 <ClientHeader
                     userName={user.name || "Cliente"}
                     userEmail={user.email || undefined}
                 />
-                <main className="p-4">
-                    <div className="text-center py-12">
-                        <p className="text-muted-foreground">
-                            Nenhum serviço encontrado.
+                <main className="p-5">
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                            <span className="text-2xl">📭</span>
+                        </div>
+                        <p className="text-lg font-medium text-foreground mb-2">
+                            Nenhum serviço encontrado
                         </p>
-                        <p className="text-xs text-muted-foreground mt-2">
+                        <p className="text-sm text-muted-foreground max-w-[260px]">
                             Seu email não está associado a nenhuma empresa cliente.
                         </p>
                     </div>
                 </main>
-            </>
+            </div>
         )
     }
 
@@ -67,22 +70,23 @@ export default async function ClientDashboardPage() {
     }
 
     return (
-        <>
+        <div className="min-h-screen bg-background">
             <ClientHeader
                 userName={user.name || "Cliente"}
                 userEmail={user.email || undefined}
             />
-            <main className="p-4 space-y-6">
-                {/* Page Title */}
+            {/* Main content - Mobile-first padding */}
+            <main className="p-5 pb-8 space-y-6">
+                {/* Page Title - Large text for mobile */}
                 <div>
-                    <h2 className="text-2xl font-semibold">Seus Serviços</h2>
-                    <p className="text-muted-foreground text-sm mt-1">
-                        {projects.length} {projects.length === 1 ? "serviço contratado" : "serviços contratados"}
+                    <h2 className="text-2xl font-bold">Seus Serviços</h2>
+                    <p className="text-muted-foreground mt-1">
+                        {projects.length} {projects.length === 1 ? "serviço" : "serviços"}
                     </p>
                 </div>
 
-                {/* Services List */}
-                <div className="space-y-3">
+                {/* Services List - With gap for touch separation */}
+                <div className="space-y-4">
                     {projects.map((project) => (
                         <ServiceCard
                             key={project.id}
@@ -95,13 +99,19 @@ export default async function ClientDashboardPage() {
                 </div>
 
                 {projects.length === 0 && (
-                    <div className="text-center py-12">
-                        <p className="text-muted-foreground">
-                            Nenhum serviço encontrado.
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                            <span className="text-2xl">📋</span>
+                        </div>
+                        <p className="text-lg font-medium text-foreground mb-2">
+                            Nenhum serviço ainda
+                        </p>
+                        <p className="text-sm text-muted-foreground max-w-[260px]">
+                            Quando você contratar serviços, eles aparecerão aqui.
                         </p>
                     </div>
                 )}
             </main>
-        </>
+        </div>
     )
 }
