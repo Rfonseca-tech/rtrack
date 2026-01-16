@@ -14,3 +14,10 @@
   - Descrição alinhada com o produto real (Dashboard, Projetos, Tarefas, Clientes).
   - Remoção de funcionalidades não verificadas (IA/Financeiro) para garantir precisão.
   - Tradução e formatação profissional em Português.
+
+## Próximos Passos (Visão de Futuro)
+- **Central de Comunicação Unificada**: Transformar o Rtrack no hub central para **toda** a comunicação com o cliente.
+- **Evolução Interno → Externo**:
+  - **Fase 1 (Atual)**: Uso interno para organização e controle rigoroso.
+  - **Fase 2 (Futura)**: Abertura para acesso externo, permitindo que o próprio cliente faça o acompanhamento (tracking) do projeto em tempo real.
+- **Objetivo**: Transparência total e centralização da experiência do cliente.
